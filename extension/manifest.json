@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "VIZS Seller Check",
+  "version": "0.1.0",
+  "description": "Click the toolbar button to show a pet that checks a fragrance seller's credibility with your local VIZS backend.",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "VIZS: show the seller-check pet on this page"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:8000/*", "http://localhost:8000/*"],
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

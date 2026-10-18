@@ -1,0 +1,106 @@
+{
+  "_fixture": "SYNTHETIC test fixture modeled on tests/fixtures/promise_conflict.json. Not a real store.",
+  "response": {
+    "assessment": {
+      "request_id": "synthetic-request",
+      "seller_risk": "INSUFFICIENT_EVIDENCE",
+      "decision": "VERIFY_FIRST",
+      "summary": "Synthetic: the listing says free returns, but the return policy says US customers pay return shipping.",
+      "evidence": [
+        {
+          "claim": "Synthetic official brand page lists authorized retailers.",
+          "source_url": "https://brand.synthetic.example/retailers",
+          "source_title": "Synthetic brand retailer list",
+          "evidence_type": "official",
+          "claim_status": "verified_fact",
+          "retrieved_at": "2026-10-17T12:00:00Z",
+          "data_mode": "mock"
+        },
+        {
+          "claim": "Synthetic forum post about slow shipping.",
+          "source_url": "https://forum.synthetic.example/thread/1",
+          "source_title": "Synthetic forum thread",
+          "evidence_type": "community",
+          "claim_status": "allegation",
+          "retrieved_at": "2026-10-17T12:00:00Z",
+          "data_mode": "mock"
+        },
+        {
+          "claim": "Synthetic third link that must not be shown (two-link limit).",
+          "source_url": "https://third.synthetic.example/",
+          "evidence_type": "search_snippet",
+          "claim_status": "unknown",
+          "retrieved_at": "2026-10-17T12:00:00Z",
+          "data_mode": "mock"
+        }
+      ],
+      "promise_sheet": {
+        "seller_domain": "shop.synthetic.example",
+        "sources": [
+          {
+            "source_id": "listing",
+            "url": "https://shop.synthetic.example/perfume",
+            "title": "Synthetic listing page",
+            "retrieved_at": "2026-10-17T12:00:00Z",
+            "content": "Free returns. US customers only.",
+            "content_kind": "merchant_page",
+            "seller_domain": "shop.synthetic.example",
+            "data_mode": "mock"
+          },
+          {
+            "source_id": "policy",
+            "url": "https://shop.synthetic.example/returns",
+            "title": "Synthetic returns policy",
+            "retrieved_at": "2026-10-17T12:00:00Z",
+            "content": "US customers pay return shipping. Unopened items within 30 days.",
+            "content_kind": "search_snippet",
+            "seller_domain": "shop.synthetic.example",
+            "data_mode": "mock"
+          }
+        ],
+        "records": [
+          {
+            "topic": "return_cost",
+            "status": "conflicting",
+            "merchant_statement": "Free returns.",
+            "explanation": "For US customers, free returns conflicts with the customer-paid return shipping policy. No shipping cost was disclosed.",
+            "quotes": [
+              { "source_id": "listing", "quote": "Free returns." },
+              { "source_id": "policy", "quote": "US customers pay return shipping." }
+            ],
+            "conditions": { "region": "US", "eligibility": "Unopened items within 30 days." }
+          },
+          {
+            "topic": "arrival",
+            "status": "not_disclosed",
+            "merchant_statement": null,
+            "explanation": "The inspected sources did not state processing or transit times.",
+            "quotes": [],
+            "conditions": {}
+          }
+        ],
+        "domain_context": {
+          "status": "unavailable",
+          "explanation": "This check is not available; no conclusion was drawn."
+        },
+        "image_context": {
+          "status": "unavailable",
+          "explanation": "Photo checks are not available; no conclusion was drawn."
+        }
+      },
+      "research": [
+        {
+          "provider": "tavily",
+          "status": "filtered",
+          "provider_called": true,
+          "records_received": 2,
+          "records_retained": 0,
+          "records_filtered": 2
+        }
+      ],
+      "missing_information": ["Synthetic: return shipping cost was not disclosed."],
+      "data_mode": "mock"
+    },
+    "message_text": "MOCK SIMULATION: synthetic reply."
+  }
+}

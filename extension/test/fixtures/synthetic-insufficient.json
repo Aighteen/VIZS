@@ -1,0 +1,39 @@
+{
+  "_fixture": "SYNTHETIC test fixture. Not a real seller, listing or provider response.",
+  "response": {
+    "assessment": {
+      "request_id": "synthetic-request",
+      "seller_risk": "INSUFFICIENT_EVIDENCE",
+      "decision": "VERIFY_FIRST",
+      "summary": "Synthetic: not enough independent evidence about this seller was found. Verify authorization before buying.",
+      "evidence": [
+        {
+          "claim": "Synthetic search snippet mentioning the shop.",
+          "source_url": "https://reviews.synthetic.example/shop",
+          "source_title": "Synthetic review aggregator",
+          "evidence_type": "search_snippet",
+          "claim_status": "unknown",
+          "retrieved_at": "2026-10-17T12:00:00Z",
+          "data_mode": "partial"
+        }
+      ],
+      "promise_sheet": null,
+      "research": [
+        {
+          "provider": "tavily",
+          "status": "partial",
+          "provider_called": true,
+          "records_received": 5,
+          "records_retained": 2,
+          "records_filtered": 3
+        }
+      ],
+      "missing_information": [
+        "Synthetic: manufacturer authorization was not found.",
+        "Synthetic: return policy was not found."
+      ],
+      "data_mode": "partial"
+    },
+    "message_text": "Synthetic reply text."
+  }
+}
