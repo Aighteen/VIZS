@@ -62,6 +62,14 @@ async def evaluate_message(request: Request):
     return {"assessment": assessment, "message_text": body}
 
 
+@router.post("/api/v1/extension/evaluate")
+async def extension_evaluate(request: Request):
+    access = request.app.state.extension_access
+    access.authenticate(request.headers)
+    async with access.permit():
+        return await evaluate_message(request)
+
+
 @router.post("/webhooks/photon")
 async def photon():
     # Deliberate local disabled response, NOT a claimed Photon ACK/retry contract.

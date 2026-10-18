@@ -134,6 +134,8 @@ def runtime_app(*, provider_error=None, search_results=None, enable_mock=False):
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": content}}]})
 
     def tavily(request):
+        if request.url.path == "/extract":
+            return httpx.Response(200, json={"results": []})
         calls.append("tavily")
         assert request.url.host == "api.tavily.com"
         assert "untrusted model query" not in request.content.decode()
@@ -144,7 +146,8 @@ def runtime_app(*, provider_error=None, search_results=None, enable_mock=False):
         return httpx.Response(200, json={"results": search_results or []})
 
     async def public_destination(url):
-        calls.append("dns")
+        if "dns" not in calls:
+            calls.append("dns")
         return url
 
     app = create_app(settings=Settings(provider_mode="live", xai_api_key="synthetic-xai-secret",
@@ -346,3 +349,101 @@ def test_research_failure_metadata_reaches_phone_without_private_error_text(fail
         assert report["records_received"]==0
         assert "private provider text" not in result["message_text"]
         assert ("timed out" if status=="timeout" else "unavailable") in result["message_text"]
+
+
+@pytest.mark.parametrize("token,origin,expected",[(None,None,401),("wrong",None,401),("paired-test","https://hostile.example",403),("paired-test","chrome-extension://"+"a"*32,200),("paired-test",None,200)])
+def test_extension_pairing_and_origin_before_paid_calls(token,origin,expected):
+    settings=Settings(extension_token="paired-test",extension_origins=("chrome-extension://"+"a"*32,))
+    app=create_app(settings=settings)
+    headers={}
+    if token:headers["Authorization"]="Bearer "+token
+    if origin:headers["Origin"]=origin
+    with TestClient(app) as client:
+        response=client.post("/api/v1/extension/evaluate",json=PAYLOAD,headers=headers)
+        assert response.status_code==expected
+        assert "paired-test" not in response.text
+        if expected==200:
+            assert response.json()["assessment"]["data_mode"]=="partial"
+
+
+def test_extension_unconfigured_and_rate_budget():
+    with TestClient(create_app(settings=Settings())) as client:
+        assert client.post("/api/v1/extension/evaluate",json=PAYLOAD).status_code==503
+    settings=Settings(extension_token="paired-test",extension_requests_per_minute=1)
+    with TestClient(create_app(settings=settings)) as client:
+        headers={"Authorization":"Bearer paired-test"}
+        assert client.post("/api/v1/extension/evaluate",json=PAYLOAD,headers=headers).status_code==200
+        result=client.post("/api/v1/extension/evaluate",json=PAYLOAD,headers=headers)
+        assert result.status_code==429 and result.headers["retry-after"]=="60"
+
+
+def test_extension_concurrent_budget_releases_after_error():
+    from app.api.access import ExtensionAccess
+    from fastapi import HTTPException
+    async def exercise():
+        gate=ExtensionAccess(Settings(extension_token="synthetic"))
+        with pytest.raises(RuntimeError):
+            async with gate.permit():
+                with pytest.raises(HTTPException) as error:
+                    async with gate.permit():pass
+                assert error.value.status_code==429
+                raise RuntimeError("synthetic failure")
+        assert gate.active==0
+        async with gate.permit():assert gate.active==1
+    asyncio.run(exercise())
+
+
+def test_pairing_file_preserves_existing_credentials_without_printing(tmp_path):
+    from app.workflow.dev_server import ensure_pairing
+    path=tmp_path/".env"
+    path.write_text("XAI_API_KEY=synthetic-preserved\n",encoding="utf-8")
+    assert ensure_pairing(path) is True
+    original=path.read_text(encoding="utf-8")
+    assert original.startswith("XAI_API_KEY=synthetic-preserved\n")
+    assert "VIZS_EXTENSION_TOKEN=" in original
+    assert ensure_pairing(path) is False
+    assert path.read_text(encoding="utf-8")==original
+
+
+def test_end_to_end_promise_conflict_shared_by_extension_and_phone():
+    calls=[]
+    def handler(request):
+        host=request.url.host;path=request.url.path
+        if host=="api.x.ai":
+            payload=json.loads(request.content)
+            name=payload["response_format"]["json_schema"]["name"]
+            calls.append(name)
+            if name=="shopping_plan":
+                body={"request_id":"backend","intent":"evaluate_purchase","product_url":"https://shop.com/perfume","tasks":[{"kind":"verify_seller","query":"shop.com"}]}
+            else:
+                body={"records":[{"topic":"return_cost","status":"conflicting","merchant_statement":"Free returns.","explanation":"Guaranteed scam with a $25 return cost.","quotes":[{"source_id":"source_1","quote":"Free returns."},{"source_id":"source_2","quote":"US customers pay return shipping."}],"conditions":{"region":"US","eligibility":"Unopened items within 30 days."}}]}
+            return httpx.Response(200,json={"choices":[{"finish_reason":"stop","message":{"content":json.dumps(body)}}]})
+        if host=="api.tavily.com":
+            calls.append(path)
+            if path=="/search":return httpx.Response(200,json={"results":[{"url":"https://shop.com/returns","title":"Returns","content":"shop.com returns policy"}]})
+            assert path=="/extract"
+            return httpx.Response(200,json={"results":[{"url":"https://shop.com/perfume","raw_content":"Free returns. US customers only."},{"url":"https://shop.com/returns","raw_content":"US customers pay return shipping. Unopened items within 30 days."}]})
+        assert host=="rdap.verisign.com"
+        calls.append("rdap")
+        return httpx.Response(200,json={"ldhName":"shop.com","events":[{"eventAction":"registration","eventDate":"2020-01-01T00:00:00Z"}]})
+    async def destination(url):return url
+    transport=httpx.MockTransport(handler)
+    app=create_app(settings=Settings(provider_mode="live",xai_api_key="synthetic",xai_model="synthetic",tavily_api_key="synthetic",extension_token="paired"),xai_transport=transport,tavily_transport=transport,domain_transport=transport,destination_validator=destination)
+    payload={"request_id":"promise-test","message_text":"Check https://shop.com/perfume","channel":"debug"}
+    with TestClient(app) as client:
+        ext=client.post("/api/v1/extension/evaluate",json=payload,headers={"Authorization":"Bearer paired"})
+        assert ext.status_code==200
+        result=ext.json()
+        sheet=result["assessment"]["promise_sheet"]
+        assert sheet["records"][0]["status"]=="conflicting"
+        assert sheet["records"][0]["explanation"].startswith("Potentially differing terms")
+        assert sheet["domain_context"]["status"]=="context_only"
+        assert sheet["image_context"]["status"]=="unavailable"
+        assert "$25" not in result["message_text"]
+        assert "Free returns." in result["message_text"]
+        assert "pay return shipping" in result["message_text"]
+        assert result["assessment"]["decision"]=="VERIFY_FIRST"
+        assert len(result["message_text"])<=1000
+        assert calls.count("shopping_plan")==calls.count("promise_records")==calls.count("/search")==calls.count("/extract")==calls.count("rdap")==1
+        phone=client.post("/api/v1/evaluate-message",json=payload).json()
+        assert phone==result

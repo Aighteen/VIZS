@@ -1,5 +1,7 @@
 """Application composition only; B/C/D retain extraction, research and policy."""
 from contextlib import asynccontextmanager
+import asyncio
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -9,12 +11,15 @@ from app.research.evidence import SellerResearch
 from app.research.url_safety import validate_public_destination
 from app.services.grok import GrokExtractor, XAICompletionClient
 from app.services.tavily import TavilyProvider
+from app.research.domain import DomainLookup
+from app.research.promises import collect_promise_sources
+from app.research.promise_extractor import PromiseExtractor, XAIPromiseCompletionClient
 from app.workflow.service import Contracts, EvaluationWorkflow
 
 
 @asynccontextmanager
 async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=None,
-                           destination_validator=validate_public_destination):
+                           destination_validator=validate_public_destination, domain_transport=None):
     # No requests on startup; live requests require explicit mode and an evaluation.
     async with httpx.AsyncClient(transport=xai_transport, timeout=settings.grok_timeout_seconds,
                                 follow_redirects=False, trust_env=False) as client:
@@ -23,9 +28,25 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
                                          model=settings.xai_model)
                       if live and settings.xai_api_key and settings.xai_model else None)
         extractor = GrokExtractor(completion, timeout_seconds=settings.grok_timeout_seconds)
-        research = SellerResearch(TavilyProvider(
-            settings.tavily_api_key if live else None, transport=tavily_transport),
-            destination_validator=destination_validator)
+        provider = TavilyProvider(settings.tavily_api_key if live else None, transport=tavily_transport)
+        research = SellerResearch(provider, destination_validator=destination_validator)
+        promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model)
+                          if completion is not None else None)
+
+        async def resolve_promises(plan, records):
+            # Offline/missing research configuration must not cause extraction or registry requests.
+            if not live or not settings.tavily_api_key:
+                return await PromiseExtractor().extract(plan, [])
+            collected = await collect_promise_sources(provider, plan, records=records,
+                                                       destination_validator=destination_validator)
+            policy_records = collected.records + records
+            usable_page = any(record.content_kind == "merchant_page" for record in collected.records)
+            extractor = PromiseExtractor(promise_client if usable_page else None, timeout_seconds=20)
+            # Independent context lookup never expands its fixed .com/.net registry allowlist.
+            sheet, domain = await asyncio.gather(
+                extractor.extract(plan, policy_records),
+                DomainLookup(transport=domain_transport).lookup(urlsplit(str(plan.product_url)).hostname))
+            return sheet.model_copy(update={"domain_context": domain})
 
         async def research_with_status(plan, task):
             # Missing key/offline must not even perform seller DNS resolution.
@@ -34,8 +55,8 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
                 return ResearchResult([], "unavailable")
             return await research.research_with_status(plan, task)
 
-        def decision(request, plan, evidence):
-            assessment = decide(request, plan, evidence)
+        def decision(request, plan, evidence, promise_sheet=None):
+            assessment = decide(request, plan, evidence, promise_sheet=promise_sheet)
             if plan.requires_user_input and plan.clarification:
                 updates = {"summary": plan.clarification}
                 if plan.status in {"unavailable", "timeout", "invalid_output"}:
@@ -46,4 +67,5 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
             return assessment
 
         yield EvaluationWorkflow(Contracts(ShoppingRequest, OrchestratorPlan, Assessment),
-                                 extractor.extract, research_with_status, decision, settings)
+                                 extractor.extract, research_with_status, decision, settings,
+                                 promise_resolver=resolve_promises)

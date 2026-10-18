@@ -29,7 +29,7 @@ const handler = createBridgeHandler({recipient, onSendResult: async (space, sent
     sendErrorCode:latest?.sendErrorCode??null, deliveredAt:latest?.dateDelivered??null}));
 }, evaluate: async (payload) => {
   const response = await fetch(api, {method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload), signal:AbortSignal.timeout(60000), redirect:"error"});
+    body:JSON.stringify(payload), signal:AbortSignal.timeout(110000), redirect:"error"});
   if (!response.ok) throw new Error("Evaluation unavailable");
   const result = await response.json();
   log("EVALUATION_STATUS:"+JSON.stringify({decision:result.assessment?.decision??null,
