@@ -154,16 +154,13 @@ class PromiseExtractor:
                 candidate = PromiseCandidates.model_validate_json(raw)
                 sheet = sheet.model_copy(update={"records": _within_pages(candidate, registry, pages)})
                 proposed = len(candidate.records)
-            except TimeoutError:
+            except (TimeoutError, httpx.TimeoutException):
                 reader = "promise reader timed out"
             except TruncatedResponse:
                 reader = "promise reader output was cut off"
-            except httpx.TimeoutException:
-                reader = "promise reader request timed out"
             except httpx.HTTPStatusError as exc:
-                hint = getattr(exc, "hint", None)
-                code = exc.response.status_code
-                reader = f"promise reader request failed (HTTP {code}{', ' + hint if hint else ''})"
+                # Numeric status only; never the provider body.
+                reader = f"promise reader request failed (HTTP {int(exc.response.status_code)})"
             except httpx.HTTPError:
                 reader = "promise reader request failed"
             except (ValueError, TypeError, KeyError, IndexError):
