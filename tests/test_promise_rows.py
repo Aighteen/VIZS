@@ -244,4 +244,5 @@ def test_reader_read_timeout_is_reported_as_timeout():
             collection = SimpleNamespace(status="partial", records=records, requested=1)
             return await PromiseExtractor(reader, data_mode="mock").extract(SimpleNamespace(product_url=LISTING), records, collection=collection)
 
-    assert all("promise reader timed out" in r.explanation for r in run(go()).records)
+    records = run(go()).records
+    assert all("promise reader timed out" in r.explanation for r in records if r.status == "unavailable")

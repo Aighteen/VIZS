@@ -86,6 +86,43 @@ def reader_message(registry) -> str | None:
     return json.dumps({"sources": sources}) if sources else None
 
 
+# Fallback when the reader times out (LIVE-01: it did not finish within 20, 40 or
+# 55 s live): whole policy sentences picked by fixed patterns.
+# Each row quotes one sentence verbatim from a retrieved merchant page and goes
+# through the same validator; it states what the page says, never fulfillment.
+_DURATION = r"\b\d+(?:\s*(?:-|–|to)\s*\d+)?\s*(?:business |working |calendar )?(?:days?|weeks?|hours?)\b"
+_RETURN_WORDS = r"\b(?:returns?|returned|refunds?|refunded|exchanges?)\b"
+_LEXICAL_TOPICS = (
+    ("shipping_origin", (r"\b(?:ship(?:s|ped|ping)?|dispatch(?:es|ed)?|fulfil+(?:ed|ment)?|orders?)\b",
+                         r"\b(?:ships from|shipped from|dispatched from|dispatches from|fulfilled from|sent from|warehouse)\b"), None),
+    ("processing_time", (r"\b(?:process(?:ed|ing)?|dispatch(?:ed|es)?|ships? within|shipped within|prepared)\b", _DURATION), _RETURN_WORDS),
+    ("transit_time", (r"\b(?:deliver(?:y|ed|ies)?|arrive|arrival|transit)\b", _DURATION), _RETURN_WORDS),
+    ("returns", (_RETURN_WORDS, _DURATION + r"|\b(?:final sale|non-returnable|unopened|unused|original condition)\b"), None),
+    ("return_cost", (r"\breturns?\b", r"\b(?:free|prepaid|pre-paid|complimentary|return label|at (?:your|the customer's) (?:own )?(?:cost|expense)|you (?:are responsible|pay)|deducted)\b"), None),
+)
+
+
+def lexical_candidates(registry) -> list[PromiseRecord]:
+    rows, taken = [], set()
+    for source in registry:
+        if source.content_kind != "merchant_page":
+            continue
+        for line in source.content.splitlines():
+            for sentence in _SENTENCE.split(line):
+                sentence = sentence.strip()
+                if not 8 <= len(sentence) <= 300:
+                    continue
+                for topic, needed, excluded in _LEXICAL_TOPICS:
+                    if topic in taken or (excluded and re.search(excluded, sentence, re.IGNORECASE)):
+                        continue
+                    if all(re.search(pattern, sentence, re.IGNORECASE) for pattern in needed):
+                        taken.add(topic)
+                        rows.append(PromiseRecord(topic=topic, status="supported_as_statement",
+                                                  explanation="Sentence matched by fixed policy patterns.",
+                                                  quotes=[{"source_id": source.source_id, "quote": sentence}]))
+    return rows
+
+
 class PromiseCandidates(BaseModel):
     model_config = ConfigDict(extra="forbid")
     records: list[PromiseRecord] = Field(max_length=12)
@@ -230,9 +267,14 @@ class PromiseExtractor:
             except (ValueError, TypeError, KeyError, IndexError):
                 reader = "promise reader output was invalid"
         # Mandatory provider-owned registry passed separately; model cannot replace it.
+        fallback = message is not None and reader == "promise reader timed out"
+        if fallback:
+            sheet = sheet.model_copy(update={"records": lexical_candidates(registry)})
         validated = validate_promise_sheet(sheet, sources=registry, seller_domain=seller)
         if proposed is not None:
             reader = f"promise reader proposed {proposed} rows, {len(validated.records)} kept after quote checks"
+        elif fallback:
+            reader += f"; {len(validated.records)} rows taken from page wording"
         explanation = "No validated statement was retained for this topic; this is not proof the merchant omits a policy."
         if collection is not None:
             explanation += f" Check details: {_extract_note(collection)}; {reader}."

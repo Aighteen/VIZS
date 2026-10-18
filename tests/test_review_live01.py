@@ -85,7 +85,7 @@ def _reader_note(handler):
             return await PromiseExtractor(reader, data_mode="mock").extract(plan, [source], collection=collection)
 
     notes = [r.explanation for r in asyncio.run(go()).records if r.status == "unavailable"]
-    assert len(notes) == 5 and len(set(notes)) == 1
+    assert notes and len(set(notes)) == 1
     return notes[0].split("Check details: ", 1)[1]
 
 
@@ -96,8 +96,9 @@ def _raise(exc_type):
 
 
 @pytest.mark.parametrize("handler, expected", [
-    (_raise(httpx.ReadTimeout), "promise reader timed out."),
-    (_raise(httpx.ConnectTimeout), "promise reader timed out."),
+    # A reader timeout falls back to whole policy sentences (lane A, LIVE-01).
+    (_raise(httpx.ReadTimeout), "promise reader timed out; 1 rows taken from page wording."),
+    (_raise(httpx.ConnectTimeout), "promise reader timed out; 1 rows taken from page wording."),
     (_raise(httpx.ConnectError), "promise reader request failed."),
     (lambda request: httpx.Response(400, json={"error": "SECRET-PAGE-TEXT https://x.example"}),
      "promise reader request failed (HTTP 400)."),

@@ -293,3 +293,47 @@ def test_runtime_gives_promise_request_the_remaining_budget():
     # Offline the earlier stages take ~0 s, so the reader gets the 55 s cap, not the plan's 30 s.
     assert len(seen) == 1 and 50 < seen[0] <= 55
     assert any(r.status == "supported_as_statement" for r in assessment.promise_sheet.records)
+
+
+FALLBACK_PAGE = (
+    "Santal 33 Eau de Parfum. Add to bag.\n"
+    "Orders are processed within 1-2 business days. Standard delivery takes 3-5 business days.\n"
+    "All orders ship from our warehouse in New Jersey.\n"
+    "Refunds are processed within 10 days. Unopened items may be returned within 30 days of delivery.\n"
+    "Return shipping is free with the prepaid return label.\n"
+    "No returns.\n"
+)
+
+
+def fallback_sheet(reader_error, content=FALLBACK_PAGE, kind="merchant_page"):
+    source = SourceRecord(CLEAN, "Retrieved merchant page", content, datetime.now(timezone.utc), content_kind=kind)
+    collection = SimpleNamespace(status="partial", records=[source], requested=1)
+    return run(PromiseExtractor(Reader(reader_error), data_mode="mock").extract(
+        SimpleNamespace(product_url=CLEAN), [source], collection=collection)), source
+
+
+def test_reader_timeout_falls_back_to_whole_policy_sentences():
+    sheet, source = fallback_sheet(TimeoutError())
+    quotes = {r.topic: r.quotes[0].quote for r in sheet.records if r.status == "supported_as_statement"}
+    assert quotes == {
+        "shipping_origin": "All orders ship from our warehouse in New Jersey.",
+        "processing_time": "Orders are processed within 1-2 business days.",
+        "transit_time": "Standard delivery takes 3-5 business days.",
+        "returns": "Refunds are processed within 10 days.",
+        "return_cost": "Return shipping is free with the prepaid return label.",
+    }
+    assert all(q in source.excerpt for q in quotes.values())
+    assert all(r.explanation == "Merchant statement in retrieved content; fulfillment unverified."
+               for r in sheet.records if r.status == "supported_as_statement")
+
+
+def test_fallback_is_only_for_timeouts_and_only_quotes_merchant_pages():
+    sheet, _ = fallback_sheet(httpx.ConnectError("x"))
+    assert all(r.status == "unavailable" for r in sheet.records)
+    sheet, _ = fallback_sheet("not json")
+    assert all(r.status == "unavailable" for r in sheet.records)
+    sheet, _ = fallback_sheet(TimeoutError(), kind="search_snippet")
+    assert all(r.status == "unavailable" for r in sheet.records)
+    sheet, _ = fallback_sheet(TimeoutError(), content="Santal 33. Free shipping on every order. Notes of cardamom.")
+    assert all(r.status == "unavailable" for r in sheet.records)
+    assert all("promise reader timed out; 0 rows taken from page wording." in r.explanation for r in sheet.records)
