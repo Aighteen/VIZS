@@ -327,8 +327,13 @@ def test_reader_timeout_falls_back_to_whole_policy_sentences():
                for r in sheet.records if r.status == "supported_as_statement")
 
 
-def test_fallback_is_only_for_timeouts_and_only_quotes_merchant_pages():
-    sheet, _ = fallback_sheet(httpx.ConnectError("x"))
+def test_fallback_is_only_for_reader_failures_and_only_quotes_merchant_pages():
+    request = httpx.Request("POST", "https://api.x.ai/v1/chat/completions")
+    for error in (httpx.ConnectError("x"),
+                  httpx.HTTPStatusError("x", request=request, response=httpx.Response(402, request=request))):
+        sheet, _ = fallback_sheet(error)
+        assert sum(r.status == "supported_as_statement" for r in sheet.records) == 5
+    sheet, _ = fallback_sheet('{"records": [{"topic": "ret')
     assert all(r.status == "unavailable" for r in sheet.records)
     sheet, _ = fallback_sheet("not json")
     assert all(r.status == "unavailable" for r in sheet.records)

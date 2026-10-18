@@ -96,14 +96,14 @@ def _raise(exc_type):
 
 
 @pytest.mark.parametrize("handler, expected", [
-    # A reader timeout falls back to whole policy sentences (lane A, LIVE-01).
+    # A reader timeout or failed request falls back to whole policy sentences (lane A, LIVE-01).
     (_raise(httpx.ReadTimeout), "promise reader timed out; 1 rows taken from page wording."),
     (_raise(httpx.ConnectTimeout), "promise reader timed out; 1 rows taken from page wording."),
-    (_raise(httpx.ConnectError), "promise reader request failed."),
+    (_raise(httpx.ConnectError), "promise reader request failed; 1 rows taken from page wording."),
     (lambda request: httpx.Response(400, json={"error": "SECRET-PAGE-TEXT https://x.example"}),
-     "promise reader request failed (HTTP 400)."),
-    (lambda request: httpx.Response(429, text="rate limited"), "promise reader request failed (HTTP 429)."),
-    (lambda request: httpx.Response(503), "promise reader request failed (HTTP 503)."),
+     "promise reader request failed (HTTP 400); 1 rows taken from page wording."),
+    (lambda request: httpx.Response(429, text="rate limited"), "promise reader request failed (HTTP 429); 1 rows taken from page wording."),
+    (lambda request: httpx.Response(503), "promise reader request failed (HTTP 503); 1 rows taken from page wording."),
 ])
 def test_promise_reader_transport_failures_are_distinguished(handler, expected):
     note = _reader_note(handler)

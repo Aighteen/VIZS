@@ -86,8 +86,9 @@ def reader_message(registry) -> str | None:
     return json.dumps({"sources": sources}) if sources else None
 
 
-# Fallback when the reader times out (LIVE-01: it did not finish within 20, 40 or
-# 55 s live): whole policy sentences picked by fixed patterns.
+# Fallback when the reader times out or its request fails (LIVE-01: it did not
+# finish within 20, 40 or 55 s live, later HTTP 402): whole policy sentences picked
+# by fixed patterns.
 # Each row quotes one sentence verbatim from a retrieved merchant page and goes
 # through the same validator; it states what the page says, never fulfillment.
 # Durations as merchants write them: "3-5 business days", "thirty (30) days",
@@ -351,7 +352,11 @@ class PromiseExtractor:
             except (ValueError, TypeError, KeyError, IndexError):
                 reader = "promise reader output was invalid"
         # Mandatory provider-owned registry passed separately; model cannot replace it.
-        fallback = message is not None and reader == "promise reader timed out"
+        # The reader could not be reached or did not answer in time (timeout, provider
+        # error such as HTTP 402): fall back to page wording. Invalid or cut-off output
+        # is not retried this way, so a misbehaving reply never turns into rows.
+        fallback = message is not None and proposed is None and reader.startswith(
+            ("promise reader timed out", "promise reader request failed"))
         if fallback:
             sheet = sheet.model_copy(update={"records": lexical_candidates(registry, plan.product_url)})
         validated = validate_promise_sheet(sheet, sources=registry, seller_domain=seller)

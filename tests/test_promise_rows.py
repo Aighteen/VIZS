@@ -228,9 +228,10 @@ def test_reader_http_status_is_reported_without_provider_body(response, expected
             collection = SimpleNamespace(status="partial", records=records, requested=1)
             return await PromiseExtractor(reader, data_mode="mock").extract(SimpleNamespace(product_url=LISTING), records, collection=collection)
 
-    notes = [r.explanation for r in run(go()).records]
+    records = run(go()).records
+    notes = [r.explanation for r in records if r.status == "unavailable"]
     assert notes and all(expected in n for n in notes)
-    assert not any("schema" in n or "slow down" in n or "http" in n for n in notes)
+    assert not any("schema" in n or "slow down" in n or "http" in n for n in (r.explanation for r in records))
 
 
 def test_reader_read_timeout_is_reported_as_timeout():
