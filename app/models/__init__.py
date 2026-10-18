@@ -152,6 +152,8 @@ class Assessment(Contract):
             raise ValueError("Risk and decision disagree")
         if self.data_mode == "live" and any(e.data_mode != "live" for e in self.evidence):
             raise ValueError("Non-live evidence cannot be labeled live")
+        if self.data_mode == "live" and self.promise_sheet and any(s.data_mode != "live" for s in self.promise_sheet.sources):
+            raise ValueError("Non-live promise sources cannot be labeled live")
         return self
 
 
