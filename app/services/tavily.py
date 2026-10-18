@@ -121,5 +121,5 @@ class TavilyProvider:
             if url is None or url in seen or not item["raw_content"].strip():
                 continue
             seen.add(url)
-            records.append(SourceRecord(url, "Retrieved merchant page", item["raw_content"][:12000], datetime.now(timezone.utc), content_kind="merchant_page"))
+            records.append(SourceRecord(url, "Retrieved merchant page", item["raw_content"][:60000], datetime.now(timezone.utc), content_kind="merchant_page"))
         return records

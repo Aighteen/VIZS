@@ -1,6 +1,7 @@
 """Grok extracts candidate promise rows; Python binds and validates source spans."""
 import asyncio
 import json
+import re
 from urllib.parse import urlsplit
 
 import httpx
@@ -18,7 +19,9 @@ proof of performance. Search snippets cannot establish absence of a policy.
 Separate processing and transit; preserve regions, eligibility and exceptions.
 A conflict needs two relevant quotes under matching conditions. Do not produce a
 conflict across regions or exclusions. If a check cannot be made use unavailable.
-Do not provide fraud probabilities, authenticity conclusions, or tools."""
+Do not provide fraud probabilities, authenticity conclusions, or tools.
+Be brief: at most one record per topic, one or two short quotes per record
+(one sentence each), explanations under 200 characters."""
 
 
 class PromiseCandidates(BaseModel):
@@ -49,9 +52,48 @@ def _extract_note(collection) -> str:
     return f"page extract returned {pages} of {collection.requested} pages"
 
 
+# Merchant pages are mostly navigation and product copy. Only windows around
+# policy wording go to the reader, which keeps the call inside its time bound
+# (LIVE-01). Quotes are validated against this retained text and, separately,
+# against the full page so a quote cannot stitch two windows together.
+_POLICY_WORDS = re.compile(
+    r"ship|deliver|dispatch|despatch|process|business day|working day|transit|"
+    r"return|refund|exchange|warehouse|fulfil|customs|duties|courier|carrier|"
+    r"restocking|prepaid|label", re.IGNORECASE)
+_WINDOW = 400
+_PAGE_BUDGET = 5000
+_GAP = "\n[...]\n"
+
+
+def policy_passages(text: str, budget: int = _PAGE_BUDGET) -> str:
+    """Policy-relevant windows of ``text`` (unchanged when it already fits)."""
+    if len(text) <= budget:
+        return text
+    spans = []
+    for match in _POLICY_WORDS.finditer(text):
+        start, end = max(0, match.start() - _WINDOW), min(len(text), match.end() + _WINDOW)
+        if spans and start <= spans[-1][1]:
+            spans[-1][1] = max(spans[-1][1], end)
+        else:
+            spans.append([start, end])
+    kept, used = [], 0
+    for start, end in spans:
+        if used >= budget:
+            break
+        piece = text[start:min(end, start + budget - used)]
+        kept.append(piece)
+        used += len(piece)
+    return _GAP.join(kept)
+
+
 def source_registry(plan, records, *, data_mode="partial"):
+    return _registry(plan, records, data_mode=data_mode)[0]
+
+
+def _registry(plan, records, *, data_mode):
+    """Provider-owned sources plus each source's full (untrimmed) page text by source_id."""
     seller = urlsplit(str(plan.product_url)).hostname.lower().removeprefix("www.")
-    sources = []
+    sources, pages = [], {}
     seen = set()
     for record in records[:8]:
         if record.source_url in seen:
@@ -62,8 +104,22 @@ def source_registry(plan, records, *, data_mode="partial"):
         except (UnsafeURL, ValueError):
             continue
         seen.add(record.source_url)
-        sources.append(PromiseSource(source_id=f"source_{len(sources)+1}", url=record.source_url, title=record.title or None, retrieved_at=record.retrieved_at, content=record.excerpt[:20000], content_kind=record.content_kind, seller_domain=seller, data_mode=data_mode))
-    return sources
+        pages[f"source_{len(sources)+1}"] = record.excerpt[:60000]
+        sources.append(PromiseSource(source_id=f"source_{len(sources)+1}", url=record.source_url, title=record.title or None, retrieved_at=record.retrieved_at, content=_registry_content(record), content_kind=record.content_kind, seller_domain=seller, data_mode=data_mode))
+    return sources, pages
+
+
+def _registry_content(record) -> str:
+    text = record.excerpt[:60000]
+    return policy_passages(text) if record.content_kind == "merchant_page" else text[:20000]
+
+
+def _within_pages(candidate, registry, pages):
+    """Drop rows whose quotes are not spans of the full page, or that claim absence from trimmed text."""
+    trimmed = any(pages[s.source_id] != s.content for s in registry)
+    return [row for row in candidate.records
+            if not (trimmed and row.status == "not_disclosed")
+            and all(q.quote in pages.get(q.source_id, "") for q in row.quotes)]
 
 
 class PromiseExtractor:
@@ -75,7 +131,7 @@ class PromiseExtractor:
     async def extract(self, plan, records, *, collection=None):
         """``collection`` (live path only) adds stage diagnostics to unavailable rows."""
         from app.decision.promises import validate_promise_sheet
-        registry = source_registry(plan, records, data_mode=self.data_mode)
+        registry, pages = _registry(plan, records, data_mode=self.data_mode)
         seller = urlsplit(str(plan.product_url)).hostname.lower().removeprefix("www.")
         sheet = PromiseSheet(seller_domain=seller, sources=registry)
         proposed = None
@@ -87,7 +143,7 @@ class PromiseExtractor:
                 if not isinstance(raw, str) or len(raw.encode()) > 32768:
                     raise ValueError("Oversize promise output")
                 candidate = PromiseCandidates.model_validate_json(raw)
-                sheet = sheet.model_copy(update={"records": candidate.records})
+                sheet = sheet.model_copy(update={"records": _within_pages(candidate, registry, pages)})
                 proposed = len(candidate.records)
             except TimeoutError:
                 reader = "promise reader timed out"

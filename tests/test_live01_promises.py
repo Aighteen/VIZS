@@ -210,3 +210,64 @@ def test_provider_error_body_maps_to_fixed_hint_without_leaking(code, body, expe
     for note in notes:
         for leaked in ("http:", "https", "lelabo", ".com", "SECRET-PAGE-TEXT", "gclid", "131072", "explicit-test-model"):
             assert leaked not in note
+
+
+FILLER = "Santal 33 eau de parfum notes of cardamom iris violet ambrox. " * 400
+RETURNS = "Returns are accepted within 30 days of delivery for unopened items."
+SHIPPING = "Orders placed before 1pm EST ship the same business day."
+
+
+def long_page():
+    return FILLER + RETURNS + " " + FILLER + SHIPPING + " " + FILLER
+
+
+def test_policy_passages_keep_policy_windows_within_budget():
+    from app.research.promise_extractor import policy_passages
+    text = long_page()
+    kept = policy_passages(text)
+    assert len(text) > 40000 and len(kept) <= 5000 + 20
+    assert RETURNS in kept and SHIPPING in kept
+    assert policy_passages("short page") == "short page"
+
+
+def trimmed_inputs():
+    source = SourceRecord(CLEAN, "Retrieved merchant page", long_page(), datetime.now(timezone.utc), content_kind="merchant_page")
+    collection = SimpleNamespace(status="partial", records=[source], requested=1)
+    return SimpleNamespace(product_url=CLEAN), source, collection
+
+
+def row(topic, status, *quotes):
+    return {"topic": topic, "status": status, "explanation": "x",
+            "quotes": [{"source_id": "source_1", "quote": q} for q in quotes]}
+
+
+def test_reader_receives_trimmed_page_and_exact_quotes_survive():
+    plan, source, collection = trimmed_inputs()
+    seen = []
+
+    class Capture(Reader):
+        async def complete(self, message, schema):
+            seen.append(json.loads(message))
+            return self.result
+
+    reply = json.dumps({"records": [row("returns", "supported_as_statement", RETURNS)]})
+    sheet = run(PromiseExtractor(Capture(reply), data_mode="mock").extract(plan, [source], collection=collection))
+    content = seen[0]["sources"][0]["content"]
+    assert len(content) <= 5020 and RETURNS in content
+    kept = [r for r in sheet.records if r.status == "supported_as_statement"]
+    assert [r.topic for r in kept] == ["returns"] and kept[0].quotes[0].quote == RETURNS
+    assert "1 rows, 1 kept" in sheet.records[-1].explanation
+
+
+def test_quote_stitched_across_windows_or_absence_claim_on_trimmed_page_is_dropped():
+    from app.research.promise_extractor import policy_passages
+    plan, source, collection = trimmed_inputs()
+    retained = policy_passages(source.excerpt)
+    gap = retained.index("[...]")
+    stitched = retained[gap - 20:gap + 30]
+    assert stitched in retained and stitched not in source.excerpt
+    reply = json.dumps({"records": [row("returns", "supported_as_statement", stitched),
+                                    row("shipping_origin", "not_disclosed")]})
+    sheet = run(PromiseExtractor(Reader(reply), data_mode="mock").extract(plan, [source], collection=collection))
+    assert all(r.status == "unavailable" for r in sheet.records)
+    assert "proposed 2 rows, 0 kept" in sheet.records[0].explanation
