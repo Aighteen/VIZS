@@ -47,6 +47,31 @@ class TruncatedResponse(ValueError):
     """The provider stopped at its output token limit."""
 
 
+class ProviderStatusError(httpx.HTTPStatusError):
+    """HTTP error with a fixed-vocabulary cause hint; never carries the body text."""
+
+    def __init__(self, *, request, response, hint: str | None):
+        super().__init__(f"Provider returned HTTP {response.status_code}", request=request, response=response)
+        self.hint = hint
+
+
+# Fixed hints only; provider error bodies may echo request content and are never surfaced.
+_ERROR_HINTS = (
+    ("schema rejected", ("schema", "response_format", "strict")),
+    ("input too long", ("context", "token", "too long", "too large", "maximum")),
+    ("model unavailable", ("model",)),
+    ("rate limited", ("rate", "quota", "credit")),
+)
+
+
+def _error_hint(body: bytes) -> str | None:
+    text = body.decode("utf-8", "replace").lower()
+    for hint, needles in _ERROR_HINTS:
+        if any(n in text for n in needles):
+            return hint
+    return None
+
+
 class XAICompletionClient:
     """Explicitly configured transport. Client lifetime belongs to the caller."""
 
@@ -81,6 +106,13 @@ class XAICompletionClient:
             },
             follow_redirects=False,
         ) as response:
+            if response.status_code >= 400:
+                body = bytearray()
+                async for chunk in response.aiter_bytes():
+                    body.extend(chunk)
+                    if len(body) > 4096:
+                        break
+                raise ProviderStatusError(request=response.request, response=response, hint=_error_hint(bytes(body)))
             response.raise_for_status()
             raw = bytearray()
             async for chunk in response.aiter_bytes():

@@ -93,6 +93,12 @@ class PromiseExtractor:
                 reader = "promise reader timed out"
             except TruncatedResponse:
                 reader = "promise reader output was cut off"
+            except httpx.TimeoutException:
+                reader = "promise reader request timed out"
+            except httpx.HTTPStatusError as exc:
+                hint = getattr(exc, "hint", None)
+                code = exc.response.status_code
+                reader = f"promise reader request failed (HTTP {code}{', ' + hint if hint else ''})"
             except httpx.HTTPError:
                 reader = "promise reader request failed"
             except (ValueError, TypeError, KeyError, IndexError):

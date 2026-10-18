@@ -167,3 +167,46 @@ def test_diagnostics_only_on_live_path():
     plan, source, _ = promise_inputs()
     sheet = run(PromiseExtractor(Reader(TimeoutError()), data_mode="mock").extract(plan, [source]))
     assert all("Check details" not in n for n in explanations(sheet))
+
+
+def _status_error(code):
+    request = httpx.Request("POST", "https://api.x.ai/v1/chat/completions")
+    return httpx.HTTPStatusError("x", request=request, response=httpx.Response(code, request=request))
+
+
+@pytest.mark.parametrize("error, expected", [
+    (httpx.ReadTimeout("x"), "promise reader request timed out"),
+    (httpx.ConnectTimeout("x"), "promise reader request timed out"),
+    (_status_error(400), "promise reader request failed (HTTP 400)"),
+    (_status_error(429), "promise reader request failed (HTTP 429)"),
+    (httpx.ConnectError("x"), "promise reader request failed."),
+])
+def test_reader_failure_causes_are_distinguished(error, expected):
+    plan, source, collection = promise_inputs()
+    sheet = run(PromiseExtractor(Reader(error), data_mode="mock").extract(plan, [source], collection=collection))
+    notes = explanations(sheet)
+    assert len(notes) == 5 and all(expected in n for n in notes)
+
+
+@pytest.mark.parametrize("code, body, expected", [
+    (400, {"error": "Invalid response_format json_schema: SECRET-PAGE-TEXT lelabo.com"}, "(HTTP 400, schema rejected)"),
+    (400, {"error": "This model's maximum prompt length is 131072 tokens. https://www.lelabofragrances.com"}, "(HTTP 400, input too long)"),
+    (404, {"error": "The model explicit-test-model does not exist"}, "(HTTP 404, model unavailable)"),
+    (500, {"error": "SECRET-PAGE-TEXT gclid internal"}, "(HTTP 500)"),
+])
+def test_provider_error_body_maps_to_fixed_hint_without_leaking(code, body, expected):
+    plan, source, collection = promise_inputs()
+
+    def handler(request):
+        return httpx.Response(code, json=body)
+
+    async def go():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            reader = XAIPromiseCompletionClient(client, api_key="mock-key", model="explicit-test-model")
+            return await PromiseExtractor(reader, data_mode="mock").extract(plan, [source], collection=collection)
+
+    notes = explanations(run(go()))
+    assert len(notes) == 5 and all(f"promise reader request failed {expected}." in n for n in notes)
+    for note in notes:
+        for leaked in ("http:", "https", "lelabo", ".com", "SECRET-PAGE-TEXT", "gclid", "131072", "explicit-test-model"):
+            assert leaked not in note
