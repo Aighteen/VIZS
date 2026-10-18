@@ -319,7 +319,7 @@ def test_reader_timeout_falls_back_to_whole_policy_sentences():
         "shipping_origin": "All orders ship from our warehouse in New Jersey.",
         "processing_time": "Orders are processed within 1-2 business days.",
         "transit_time": "Standard delivery takes 3-5 business days.",
-        "returns": "Refunds are processed within 10 days.",
+        "returns": "Unopened items may be returned within 30 days of delivery.",
         "return_cost": "Return shipping is free with the prepaid return label.",
     }
     assert all(q in source.excerpt for q in quotes.values())

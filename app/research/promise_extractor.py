@@ -90,36 +90,48 @@ def reader_message(registry) -> str | None:
 # 55 s live): whole policy sentences picked by fixed patterns.
 # Each row quotes one sentence verbatim from a retrieved merchant page and goes
 # through the same validator; it states what the page says, never fulfillment.
-_DURATION = r"\b\d+(?:\s*(?:-|–|to)\s*\d+)?\s*(?:business |working |calendar )?(?:days?|weeks?|hours?)\b"
+# Durations as merchants write them: "3-5 business days", "thirty (30) days",
+# "(2–3 business days)", "30-day", "up to a week".
+_DURATION = (r"\b\d+(?:\s*(?:-|–|to)\s*\d+)?\)?\s*(?:business |working |calendar )?(?:days?|weeks?|hours?)\b"
+             r"|\b\d+[- ]day\b|\bup to a week\b")
 _RETURN_WORDS = r"\b(?:returns?|returned|refunds?|refunded|exchanges?)\b"
+# Per topic: patterns that must all match, an optional exclusion, and a stronger
+# "policy sentence" pattern preferred over the first plain match.
 _LEXICAL_TOPICS = (
     ("shipping_origin", (r"\b(?:ship(?:s|ped|ping)?|dispatch(?:es|ed)?|fulfil+(?:ed|ment)?|orders?)\b",
-                         r"\b(?:ships from|shipped from|dispatched from|dispatches from|fulfilled from|sent from|warehouse)\b"), None),
-    ("processing_time", (r"\b(?:process(?:ed|ing)?|dispatch(?:ed|es)?|ships? within|shipped within|prepared)\b", _DURATION), _RETURN_WORDS),
-    ("transit_time", (r"\b(?:deliver(?:y|ed|ies)?|arrive|arrival|transit)\b", _DURATION), _RETURN_WORDS),
-    ("returns", (_RETURN_WORDS, _DURATION + r"|\b(?:final sale|non-returnable|unopened|unused|original condition)\b"), None),
-    ("return_cost", (r"\breturns?\b", r"\b(?:free|prepaid|pre-paid|complimentary|return label|at (?:your|the customer's) (?:own )?(?:cost|expense)|you (?:are responsible|pay)|deducted)\b"), None),
+                         r"\b(?:ships from|shipped from|dispatched from|dispatches from|fulfilled from|sent from|warehouse)\b"), None, None),
+    ("processing_time", (r"\b(?:process(?:ed|ing)?|dispatch(?:ed|es)?|ships? within|shipped within|prepared)\b", _DURATION), _RETURN_WORDS, None),
+    ("transit_time", (r"\b(?:deliver(?:y|ed|ies)?|arrive|arrival|transit|(?:standard|express|ground) shipping)\b", _DURATION), _RETURN_WORDS, None),
+    ("returns", (_RETURN_WORDS, _DURATION + r"|\b(?:final sale|non-returnable|unopened|unused|original condition|accept)\b"), None,
+     r"\b(?:accepts? returns|returns? (?:are|is) (?:not )?accepted|(?:may|can) (?:be )?return(?:ed)?|return (?:it|them|items?|products?) within|final sale|non-returnable)\b"),
+    ("return_cost", (r"\breturns?\b", r"\b(?:free|prepaid|pre-paid|complimentary|return label|at (?:your|the customer's) (?:own )?(?:cost|expense)|you (?:are responsible|pay)|pay for (?:the )?return|deducted)\b"), None,
+     r"\b(?:free returns?|prepaid return|return label|pay for (?:the )?return|return shipping (?:is|costs?))\b"),
 )
 
 
-def lexical_candidates(registry) -> list[PromiseRecord]:
-    rows, taken = [], set()
+def _sentences(registry):
     for source in registry:
         if source.content_kind != "merchant_page":
             continue
         for line in source.content.splitlines():
             for sentence in _SENTENCE.split(line):
                 sentence = sentence.strip()
-                if not 8 <= len(sentence) <= 300:
-                    continue
-                for topic, needed, excluded in _LEXICAL_TOPICS:
-                    if topic in taken or (excluded and re.search(excluded, sentence, re.IGNORECASE)):
-                        continue
-                    if all(re.search(pattern, sentence, re.IGNORECASE) for pattern in needed):
-                        taken.add(topic)
-                        rows.append(PromiseRecord(topic=topic, status="supported_as_statement",
-                                                  explanation="Sentence matched by fixed policy patterns.",
-                                                  quotes=[{"source_id": source.source_id, "quote": sentence}]))
+                if 8 <= len(sentence) <= 400:
+                    yield source.source_id, sentence
+
+
+def lexical_candidates(registry) -> list[PromiseRecord]:
+    rows = []
+    for topic, needed, excluded, strong in _LEXICAL_TOPICS:
+        matches = [(source_id, sentence) for source_id, sentence in _sentences(registry)
+                   if not (excluded and re.search(excluded, sentence, re.IGNORECASE))
+                   and all(re.search(pattern, sentence, re.IGNORECASE) for pattern in needed)]
+        preferred = [m for m in matches if strong and re.search(strong, m[1], re.IGNORECASE)]
+        if matches:
+            source_id, sentence = (preferred or matches)[0]
+            rows.append(PromiseRecord(topic=topic, status="supported_as_statement",
+                                      explanation="Sentence matched by fixed policy patterns.",
+                                      quotes=[{"source_id": source_id, "quote": sentence}]))
     return rows
 
 
