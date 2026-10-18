@@ -1,5 +1,9 @@
 # DubHacks project instructions for GitHub Copilot
 
+`AGENTS.md` is the shared instruction source for all coding tools. Before implementation, read `docs/OWNERSHIP.md`, the assigned guide under `docs/skills/`, and `docs/AGENT_HANDOFF.md`. Follow the explicit session assignment and exclusive file ownership. Use separate checkouts/worktrees for concurrent edits.
+
+Preserve tracked and untracked changes. Never reset or clean Git state, bulk-restore files, force checkout, or delete another agent's work to make `git status` clean without explicit authorization for that action. Shared models belong to D; application wiring and integration belong to A. Copilot agent definitions do not configure other tools.
+
 Read the root `AGENTS.md` and relevant `docs/*.md` before nontrivial edits. This is **an SMS-first fragrance shopping decision assistant**, not a generic React application. Backend: Python/FastAPI/Pydantic. Planned providers: Photon 2.0, Grok, and one of Tavily or native Grok Web Search.
 
 When the user asks to **plan**, inspect the repository and produce tasks, file paths, interfaces, acceptance tests, dependencies, and a deadline-aware critical path **without coding or touching files** unless requested. Use `COPILOT_PLAN_TEXT.txt` as the detailed planning specification.

@@ -1,0 +1,10 @@
+---
+description: Shared project instructions and exclusive packet ownership
+alwaysApply: true
+---
+
+Read and follow root `AGENTS.md`, the shared project instruction source. Read `docs/OWNERSHIP.md`, your assigned `docs/skills/packet-*.md`, and `docs/AGENT_HANDOFF.md` before implementation.
+
+Follow the explicit session assignment and use a separate worktree/checkout for concurrent edits. Preserve tracked and untracked work: no Git reset, clean, bulk restore, forced checkout, or deletion to clear status without explicit authorization for that action.
+
+D owns shared models; A owns wiring and integration. Do not infer permission for paid APIs, push, deployment, or submission. Report actual test results and distinguish fixtures from live integrations.

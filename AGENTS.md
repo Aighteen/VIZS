@@ -34,6 +34,8 @@ Read `docs/PROJECT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/API_CONTRACTS.md`, `
 
 ## Candidate directory ownership (adjust to actual existing structure)
 
+The packet-specific ownership table in `docs/OWNERSHIP.md` refines these candidate areas, including test ownership.
+
 - `app/main.py`, `app/api/`, `app/adapters/photon.py`, `app/workflow/`: integration owner / Photon owner
 - `app/agents/`, `app/services/grok.py`: Grok owner
 - `app/research/`, `app/services/tavily.py`: evidence/research owner
@@ -42,3 +44,17 @@ Read `docs/PROJECT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/API_CONTRACTS.md`, `
 ## Definition of done for every task
 
 Report **changed paths**, **actual commands/tests run**, **observed outputs**, **remaining blockers**, **real vs mocked dependencies**, and the **exact integration step**. Never auto-push, deploy, use paid API credits, or submit on the team's behalf without instruction. If external docs are unavailable, label uncertainty rather than fabricate an integration.
+
+## Coordination across coding tools
+
+This is the shared project instruction source for Codex, Claude Code, Cursor, and Copilot. Tool entry files point here; avoid competing copies of project rules. Explicit user instructions take precedence.
+
+- Before implementation, read `docs/OWNERSHIP.md`, your assigned `docs/skills/packet-*.md`, and `docs/AGENT_HANDOFF.md`. Inspect actual files and run `git status --short` before editing.
+- Follow the human's explicit packet and writable-path assignment. An existing session assignment is sufficient; do not ask again. Unassigned sessions may inspect and plan without claiming a role.
+- Use a separate worktree or checkout and branch per concurrent editing session. Branches in one directory do not isolate edits. Do not switch another session's branch or overwrite its work.
+- Preserve tracked AND untracked work. Do not run `git reset`, `git clean`, bulk `git restore`, forced checkout, or delete files to make the status clean without explicit authorization for the exact destructive action. A dirty working tree is not an error to repair.
+- D owns shared models; A owns application wiring, dependencies, coordination files, and integration. Request cross-owner changes through a handoff. Only the assigned integration owner merges when instructed.
+- Ownership tables in separate checkouts are not distributed locks. The human coordinator communicates assignments and reassignments before concurrent edits.
+- Do not spawn additional editing agents unless explicitly requested. Development packets A-D are separate from application runtime agents. The MVP retains one central Grok orchestrator with backend-controlled tools; specialist runtime agents require an explicit scope change.
+- Use actual repository setup and test commands once present. Do not claim passing tests or working integrations from proposed paths or fixtures.
+- Finish authorized work inside the assignment and report using the handoff template. No automatic push, deployment, paid API calls, or submission.
