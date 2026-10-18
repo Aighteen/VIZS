@@ -212,3 +212,57 @@ Commands on `fix/qa-round2`:
 - `python -m pytest -q -p no:cacheprovider`: **548 passed**, 0 xfailed.
 - `cd extension && node --test test/*.test.js`: **77 pass**.
 - `cd app/adapters/spectrum && npm ci && npm test`: **38 pass**, 0 todo (includes `qa-round2.test.mjs`).
+
+## Round 3: verification of the round-2 fixes and final readiness (merged `main` at 22b3d9b)
+
+### Round 3 questions for tech lead
+
+None blocking. QA-09 below has a clear fix. Accepted residuals (ccTLD-like prose, word-level "warehouse", small suffix list, unassigned two-letter codes) were not re-tested as defects.
+
+### Round 3 commands and results
+
+| Suite | Fixer's run | After my round-3 files |
+|---|---|---|
+| `python -m pytest -q -p no:cacheprovider` | **548 passed**, 0 xfailed | **641 passed, 1 xfailed** (new `tests/test_qa_round3.py`: 93 passed, 1 strict xfail QA-09) |
+| `cd extension && node --test test/*.test.js` | **77 pass** | **79 pass** (new `test/qa-round3.test.js`) |
+| `cd app/adapters/spectrum && npm test` | **38 pass**, 0 todo | 38 pass; `package.json` now includes the QA files |
+
+No process was started on port 8000 or any other port. No live calls were made and no `.env` file was read.
+
+### Verification of the round-2 fixes
+
+| Fix | Verdict | Adversarial cases tried |
+|---|---|---|
+| Q6 registrable domain | **fixed** | `co.uk`, `com.au`, an unlisted `com.fj` fallback (over-inclusive, so it can only withhold LOWER_RISK), IPv4 hosts, uppercase, `www.` and trailing dot. Seller host, subdomain and parent never give LOWER_RISK. Siblings under a public suffix (`brand.co.uk` next to `myshop.co.uk`), lookalikes (`myshop.co.uk.evil-net.com`, `seller.com.evil-net.com`, `evilseller.com`) and a neighbouring IP still can. |
+| Q7 mock route | **fixed** | An Origin header (hostile, `null`, extension) gives 403. `text/plain`, a missing type and `json-patch+json` give 415. Origin plus text gives 403. When the route is disabled, it returns 404 for any request. Declared and chunked oversized bodies give 413. In every case there are zero provider calls and nothing is sent. Local JSON still works and stays labeled `MOCK SIMULATION`. |
+| QA-06 origin wording | **fixed** | Newline, NBSP and multiple spaces inside phrases, "Country of origin:", "Origin:" and "warehouse" are recognized. "Original", "Originally", "Aboriginal", "consent from", "warehouses", "Shipsfrom" and "origins" are not. |
+| QA-08 link neutralizing | **fixed** | Neutralized: Cyrillic homoglyph host, ideographic/fullwidth/halfwidth dots, fully fullwidth `ｅｖｉｌ．ｃｏｍ`, `xn--` labels and TLDs, IPv4 with and without port or path, email, `tel:`, `sms:`, `facetime:`, `data:`, uppercase, multi-label, `.co.uk`, pseudo-path smuggling (`days.Free/phish.com`) and Unicode label plus TLD. "2-3 days.Free", "Dr.Smith", "No.5", "Version 2.5" and "50ml.Thanks" survive. Pathological 1200-character inputs finish in under 0.5 s. A mixed attack quote leaves exactly one labeled link and six `[link removed]`. |
+| QA-07 brackets | **fixed** | `<…?>` and `<…).>` stay exact. A bracketed URL followed by `.` works. Two URLs joined with brackets still count as two, so the bot asks for clarification rather than silently picking one. A real tab href cannot contain a raw `<`, `>` or whitespace (node test). A 2048-character URL with a trailing `.` fits under 4000 characters and is researched verbatim end to end. A trailing-dot listing sent through the extension route reaches research unchanged. The phone prose rule is unchanged (the original QA-03 cases re-run). |
+| Possessive URLs | **fixed** | `https://shop.com's` and `https://shop.com:443's` give the host. The in-path `it's-50ml` and the bracketed `<…/p's>` are kept. A quoted URL is trimmed. |
+
+### Round 3 finding
+
+8. **QA-09** (RISK-03; owner D). `app/decision/rules.py`: the `adverse_hosts` set counts hosts, so two adverse findings from `a.regulator-synthetic.gov` and `b.regulator-synthetic.gov` are treated as two independent sources and give HIGHER_RISK/AVOID. Expected: "multiple independent grounded adverse findings" (RISK-03, API_CONTRACTS) should count distinct registrable domains, for example `registrable_domain(e.source_url.host)`. Two different registrable domains still give HIGHER_RISK (passing control test). Low severity: the research layer never emits grounded adverse evidence today. Test: `test_RISK_03_adverse_findings_from_one_registrable_domain_are_not_independent` (strict xfail).
+
+### Whole-project P0 pass: requirements not verified by an automated test
+
+| P0 requirement (source) | Automated status | Manual or live check that covers it instead |
+|---|---|---|
+| Extension loads unpacked in Chrome; pet appears only after a toolbar click (EXTENSION_SCOPE P0-1, EXT-01) | Only the manifest and background logic are tested | G4: load unpacked, click the toolbar on a listing, and confirm there is no injection or network activity before the click |
+| Pet is movable (drag and arrow keys) and dismissible, keyboard reachable, with a static pet under reduced motion (P0-4, EXT-06) | Weak: the reduced-motion flag and CSS are tested; `pet.js` drag, keyboard and focus handling have no automated test | G4 manual browser check, including OS reduced-motion |
+| Content-side stale guards in `pet.js` (SPA href polling, stale push drop, `resetToIdle`) (EXT-05) | Service-worker side is fully tested; `pet.js` logic is not run in tests | G4: start a check, navigate within the SPA and by full navigation, and confirm no old result appears |
+| Result panel layout and readability on real pages (P0-5) | Renderer tested with a fake DOM | G4 visual check on two or three real listing pages |
+| One authorized live extension run (P0-8, LIVE-01) | Not automatable | G5: authorized live run with recorded provenance |
+| Photon registered-phone cited reply with the promise sheet (P0, PH-04) | Bridge logic and launcher tested with fakes | G5: authorized `npm run shop` run with handset receipt confirmed by the user |
+| Reproducible launcher on a real machine (PH-03) | Fully faked in tests | `npm run shop:check` on the demo machine (offline, starts the API on 8787; not run here to avoid reading `.env`) |
+| SMS transport, public hosting, FastAPI Photon webhook (AGENTS P0 "verify SMS separately") | Out of scope; `/webhooks/photon` returns 503 (tested) | Not verified. Do not claim them. |
+| Real Grok/Tavily behavior (promise extraction quality, source relevance) | Mocks only | G5 live run; quality is not provable offline |
+
+Covered by automated tests across the three suites: AGENTS hard limits (no authenticity or fraud percentage, no accusations, LOWER_RISK never from snippets or self-assertion, discount never HIGHER_RISK, prompt injection, SSRF, keys server-side, no phone or secret leakage, labeled mock data); EXTENSION_SCOPE P0-2, 3, 5, 6, 7 (logic); and the CREDIBILITY_CHECKING deterministic response rules (span validation, unknown vs unavailable, region and seller matching, no invented costs, context signals do not change risk, at most two phone links, safe rendering).
+
+### Readiness verdict
+
+**Ready with caveats.** All three suites are green: 641 passed plus 1 tracked xfail, 79 pass, and 38 pass. Every QA finding from rounds 1-2 (QA-01..08) is fixed and independently verified, and Q1-Q8 are decided. Remaining caveats:
+1. QA-09 is open. It is low severity because the current pipeline cannot produce grounded adverse evidence, and the fix is one line.
+2. Release gates G4 (actual browser inspection, EXT-06) and G5 (authorized live extension and iMessage runs) are not done. They are required before claiming those behaviors in the submission.
+3. SMS, hosting and the FastAPI Photon callback remain unverified by design.
