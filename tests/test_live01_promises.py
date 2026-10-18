@@ -498,3 +498,10 @@ def test_help_page_for_another_region_is_not_quoted():
                             content_kind="merchant_page")]
     rows = lexical_candidates(source_registry(SimpleNamespace(product_url=listing), sources), listing)
     assert [r.quotes[0].quote for r in rows] == ["Unworn shoes can be returned within 60 days of delivery."]
+
+
+def test_payment_processing_time_is_not_order_processing_time():
+    page = ("Please allow 5-10 business days for processing time with your financial institution.\n"
+            "Allow up to 3 business days for standard orders to be dispatched.\n")
+    rows = fallback_rows("https://frankgreen-synthetic.com.au/products/bottle", page)
+    assert rows["processing_time"][0] == "Allow up to 3 business days for standard orders to be dispatched."

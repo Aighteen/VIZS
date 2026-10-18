@@ -98,8 +98,10 @@ _DURATION = (r"\b\d+(?:\s*(?:-|–|to)\s*\d+)?\)?\s*(?:business |working |calend
 _RETURN_WORDS = r"\b(?:returns?|returned|refunds?|refunded|exchanges?)\b"
 # Per topic: patterns that must all match, an optional exclusion, and a stronger
 # "policy sentence" pattern preferred over the first plain match.
-# Timing rows exclude return/refund sentences and deadlines for reporting issues.
-_NOT_TIMING = _RETURN_WORDS + r"|\b(?:contact us|claims?|report|notify)\b"
+# Timing rows exclude return/refund sentences, payment/bank processing and
+# deadlines for reporting issues.
+_NOT_TIMING = _RETURN_WORDS + (r"|\b(?:contact us|claims?|report|notify|financial institution|banks?|"
+                               r"payments?|credit card|warranty)\b")
 _LEXICAL_TOPICS = (
     ("shipping_origin", (r"\b(?:ship(?:s|ped|ping)?|dispatch(?:es|ed)?|fulfil+(?:ed|ment)?|orders?)\b",
                          r"\b(?:ships from|shipped from|dispatched from|dispatches from|fulfilled from|sent from|warehouse)\b"), None, None),
