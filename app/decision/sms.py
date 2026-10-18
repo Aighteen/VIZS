@@ -88,6 +88,17 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
         text += notice
     # Promise conditions precede generic source references. Full quotes remain in
     # the shared sheet; quote/link pairs are atomic in the bounded phone body.
+    # A brand-direct reply always cites the reference source behind its claim:
+    # it takes one of the two link slots ahead of promise sources, and promise
+    # detail is trimmed first to stay within the length bound.
+    reserved = set()
+    if (assessment.decision == Decision.CONSIDER_BUYING and BRAND_DIRECT_NOTE in assessment.missing_information
+            and assessment.evidence):
+        url = str(assessment.evidence[0].source_url)
+        cite = f" Brand-store reference (unverified): {url}"
+        if len(text + cite) <= max_chars:
+            text += cite
+            reserved.add(url)
     promise_urls = set()
     if assessment.promise_sheet:
         sheet = assessment.promise_sheet
@@ -113,11 +124,11 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
                         detail += f' "{neutralize_links(quote.quote)}" {source.url}'
                 detail += " Fulfillment unverified."
             row_urls = {str(registry[q.source_id].url) for q in row.quotes if q.source_id in registry}
-            if len(promise_urls | row_urls) <= 2 and len(text + detail) <= max_chars:
+            if len(promise_urls | row_urls | reserved) <= 2 and len(text + detail) <= max_chars:
                 text += detail
                 promise_urls.update(str(registry[q.source_id].url) for q in row.quotes if q.source_id in registry)
     # Source URLs are added atomically, never truncated into misleading citations.
-    added = set(promise_urls)
+    added = set(promise_urls) | reserved
     for record in assessment.evidence:
         if len(added) >= 2:
             break

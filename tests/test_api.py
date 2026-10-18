@@ -168,8 +168,9 @@ def test_assembled_pipeline_uses_real_contracts_and_reports_empty_sources():
         assert assessment.decision == "VERIFY_FIRST"
         assert assessment.data_mode == "partial"
         assert "No relevant seller sources were returned." in assessment.missing_information
-        # Seller search plus the fixed brand-direct search; DNS is resolved once.
-        assert calls == ["grok", "dns", "tavily", "tavily"]
+        # Seller search, the fixed brand-direct search and its Wikipedia-only
+        # fallback (no reference source in the first results); DNS is resolved once.
+        assert calls == ["grok", "dns", "tavily", "tavily", "tavily"]
     assert app.state.workflow is None
 
 
@@ -201,7 +202,7 @@ def test_search_snippets_do_not_become_verified_authorization():
         response = client.post("/api/v1/evaluate", json=PAYLOAD)
         assert response.json()["decision"] == "VERIFY_FIRST"
         assert any("unverified" in gap for gap in response.json()["missing_information"])
-        assert len(calls) == 4  # grok, dns, seller search, brand-direct search
+        assert len(calls) == 5  # grok, dns, seller search, brand-direct search, Wikipedia fallback
 
 
 @pytest.mark.parametrize("mode,key,model", [("offline", "present", "present"), ("live", "", "present"), ("live", "present", "")])
@@ -337,7 +338,7 @@ def test_phone_reply_preserves_sources_and_distinguishes_research_outcomes(recor
             assert "failed validation" in result["message_text"]
         else:
             assert "Search returned no seller sources" in result["message_text"]
-        assert calls==["grok","dns","tavily","tavily"]  # seller + brand-direct search
+        assert calls==["grok","dns","tavily","tavily","tavily"]  # seller + brand-direct + Wikipedia fallback
 
 
 @pytest.mark.parametrize("failure,status",[("search_error","unavailable"),("search_timeout","timeout")])
@@ -447,6 +448,6 @@ def test_end_to_end_promise_conflict_shared_by_extension_and_phone():
         assert result["assessment"]["decision"]=="VERIFY_FIRST"
         assert len(result["message_text"])<=1000
         assert calls.count("shopping_plan")==calls.count("promise_records")==calls.count("/extract")==calls.count("rdap")==1
-        assert calls.count("/search")==2  # seller search + brand-direct search
+        assert calls.count("/search")==3  # seller search + brand-direct search + Wikipedia fallback
         phone=client.post("/api/v1/evaluate-message",json=payload).json()
         assert phone==result

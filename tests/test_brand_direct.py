@@ -1,5 +1,6 @@
 """Brand-direct rule (lane C): offline adversarial tests, synthetic excerpts only."""
 import asyncio
+import re
 from datetime import datetime, timezone
 
 import pytest
@@ -76,7 +77,8 @@ def test_brand_store_named_official_by_two_independent_sites_is_brand_direct():
     assert_brand_direct(assessment, sms)
     assert "only if the product is that brand's own" in sms
     assert [str(e.source_url) for e in assessment.evidence] == [s for s, _ in GOOD]
-    assert sms.count("Unverified source: ") == 2
+    assert f"Brand-store reference (unverified): {GOOD[0][0]}" in sms
+    assert sms.count("Unverified source: ") == 1 and GOOD[1][0] in sms
     assert "lelabofragrances.com" not in assessment.summary  # policy text names no domain
 
 
@@ -265,9 +267,13 @@ class FakeProvider:
     def __init__(self, records):
         self.records, self.queries = records, []
 
-    async def search_with_status(self, query):
+    async def search_with_status(self, query, include_domains=()):
         self.queries.append(query)
-        return SearchResponse(self.records, len(self.records))
+        self.filters = getattr(self, "filters", []) + [include_domains]
+        records = self.wiki_records if include_domains else self.records
+        return SearchResponse(records, len(records))
+
+    wiki_records = []
 
 
 def plan_for(url, brand=None):
@@ -411,7 +417,7 @@ def test_C8_user_text_and_plan_brand_never_create_the_mapping():
     provider = FakeProvider([])
     asyncio.run(SellerResearch(provider).brand_direct_with_status(
         plan_for(listing, brand="lelabofragrances.com official")))
-    assert provider.queries == ['"lelabo-outlet-sale.com" official website']
+    assert set(provider.queries) == {'"lelabo-outlet-sale.com" official website'}  # incl. Wikipedia fallback
 
 
 def test_C9_other_brand_on_the_real_domain_gets_no_brand_direct_wording():
@@ -490,7 +496,7 @@ def test_reference_page_infobox_row_confirms_the_exact_domain():
     assessment, sms = run(BRAND_URL, [], extra=result.evidence)
     assert assessment.summary.startswith("Brand's own store: per 1 reference source, this site")
     assert assessment.seller_risk == "LOWER_RISK" and assessment.decision == "CONSIDER_BUYING"
-    assert "verify authorization" not in sms.lower() and f"Unverified source: {WIKI_URL}" in sms
+    assert "verify authorization" not in sms.lower() and f"Brand-store reference (unverified): {WIKI_URL}" in sms
 
 
 @pytest.mark.parametrize("listing", ["https://lelabo-outlet-sale.com/x", "https://lelabofragrances.co/x",
@@ -525,3 +531,109 @@ def test_reference_extract_only_for_curated_hosts_and_never_the_seller():
                                  "| Website | not lelabofragrances.com |"])
 def test_website_rows_need_the_exact_key_in_the_website_field(row):
     assert brand_direct.classify_excerpt(row, "www.lelabofragrances.com") == "neutral"
+
+
+# ------------------------------------------------------------------ Wikipedia-only fallback search
+
+LOOKALIKE_WIKI_RESULT = SourceRecord("https://lelabo-outlet-sale.com/wiki", "", "Le Labo outlet", NOW)
+
+
+def fallback_research(listing, first, wiki, pages):
+    provider = ExtractingProvider(first, pages)
+    provider.wiki_records = wiki
+    return provider, asyncio.run(SellerResearch(provider).brand_direct_with_status(plan_for(listing)))
+
+
+def test_fallback_runs_only_without_a_reference_result_and_uses_the_fixed_query():
+    first = [SourceRecord("https://www.vogue-synthetic.com/x", "", "Le Labo review", NOW)]
+    provider, result = fallback_research(BRAND_URL, first, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert provider.queries == ['"lelabofragrances.com" official website'] * 2
+    assert provider.filters == [(), ("wikipedia.org",)]
+    assert provider.extracted == [([WIKI_URL], True, "reference_page")]
+    assessment, sms = run(BRAND_URL, [], extra=result.evidence)
+    assert assessment.seller_risk == "LOWER_RISK"
+    report = result.report()
+    assert report.records_received == report.records_retained + report.records_filtered
+    # A reference result in the first search: no fallback call.
+    provider, _ = fallback_research(BRAND_URL, [NEUTRAL_WIKI], [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert provider.filters == [()]
+
+
+def test_fallback_results_need_a_reference_host_and_the_same_checks():
+    # Non-Wikipedia hosts in the fallback answer are ignored (the filter is not trusted).
+    provider, result = fallback_research(BRAND_URL, [], [LOOKALIKE_WIKI_RESULT], {})
+    assert provider.extracted == [] and result.evidence == []
+    # A retailer lead on the fallback page gives nothing.
+    _, result = fallback_research(BRAND_URL, [], [NEUTRAL_WIKI], {WIKI_URL: RETAILER_PAGE})
+    assert result.evidence == []
+
+
+@pytest.mark.parametrize("listing", ["https://lelabo-outlet-sale.com/x", "https://lelabofragrances.co/x",
+                                     "https://www.lelabofragrances.com.au/x", "https://bluemercury.com/products/x"])
+def test_fallback_wikipedia_page_never_helps_lookalikes_or_retailers(listing):
+    _, result = fallback_research(listing, [], [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert result.evidence == []
+    assert_not_brand_direct(*run(listing, [], extra=result.evidence))
+
+
+def test_fallback_failure_is_silent_and_conservative():
+    class Failing(ExtractingProvider):
+        async def search_with_status(self, query, include_domains=()):
+            if include_domains:
+                from app.research.provider import ResearchUnavailable
+                raise ResearchUnavailable("down")
+            return await super().search_with_status(query)
+    provider = Failing([], {})
+    result = asyncio.run(SellerResearch(provider).brand_direct_with_status(plan_for(BRAND_URL)))
+    assert result.evidence == [] and result.status == "empty"
+
+
+def test_tavily_search_sends_include_domains_only_when_given_and_validates_it():
+    import httpx, json as _json
+    from app.research.provider import ResearchUnavailable
+    from app.services.tavily import TavilyProvider
+    bodies = []
+
+    def handler(request):
+        bodies.append(_json.loads(request.content))
+        return httpx.Response(200, json={"results": []})
+    provider = TavilyProvider("fixture", transport=httpx.MockTransport(handler))
+    asyncio.run(provider.search_with_status("q"))
+    asyncio.run(provider.search_with_status("q", include_domains=("wikipedia.org",)))
+    assert "include_domains" not in bodies[0] and bodies[1]["include_domains"] == ["wikipedia.org"]
+    for bad in (["wikipedia.org"], ("https://evil.example",), ("a.org", "b.org", "c.org", "d.org"), ("",)):
+        with pytest.raises(ResearchUnavailable):
+            asyncio.run(provider.search_with_status("q", include_domains=bad))
+
+
+# ------------------------------------------------------------------ reply citation slot
+
+def brand_sheet(n_rows=5, quote_len=160):
+    from app.models import PromiseSheet
+    sources = [{"source_id": f"s{i}", "url": f"https://www.lelabofragrances.com/policy-{i}.html",
+                "retrieved_at": NOW.isoformat(), "content": "x" * quote_len, "content_kind": "merchant_page",
+                "seller_domain": "lelabofragrances.com"} for i in range(3)]
+    topics = ["return_cost", "returns", "shipping_origin", "processing_time", "transit_time"][:n_rows]
+    records = [{"topic": t, "status": "supported_as_statement", "merchant_statement": "x" * quote_len,
+                "explanation": "Merchant statement.", "quotes": [{"source_id": f"s{i % 3}", "quote": "x" * quote_len}]}
+               for i, t in enumerate(topics)]
+    return PromiseSheet.model_validate({"seller_domain": "lelabofragrances.com", "sources": sources, "records": records})
+
+
+@pytest.mark.parametrize("rows,quote_len", [(1, 40), (5, 40), (5, 160), (5, 400)])
+def test_brand_direct_reply_always_keeps_its_reference_link(rows, quote_len):
+    assessment, _ = run(BRAND_URL, GOOD)
+    assessment = assessment.model_copy(update={"promise_sheet": brand_sheet(rows, quote_len)})
+    sms = format_sms(assessment)
+    assert f"Brand-store reference (unverified): {GOOD[0][0]}" in sms
+    assert len(sms) <= 1000
+    links = re.findall(r"https?://\S+", sms)
+    assert len(set(links)) <= 2
+    assert sms.index("Brand-store reference") < (sms.index("Merchant statement") if "Merchant statement" in sms else len(sms))
+
+
+def test_non_brand_direct_replies_keep_previous_link_rules():
+    assessment, _ = run("https://lelabo-outlet-sale.com/x", GOOD)
+    sheet = brand_sheet(5, 40).model_copy(update={"seller_domain": "lelabo-outlet-sale.com"})
+    sms = format_sms(assessment.model_copy(update={"promise_sheet": sheet}))
+    assert "Brand-store reference" not in sms and "Verify authorization" in sms

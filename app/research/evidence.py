@@ -146,9 +146,17 @@ class SellerResearch:
             return ResearchResult([], "timeout" if exc.reason == "timeout" else "unavailable", provider_called=True)
         except TimeoutError:
             return ResearchResult([], "timeout", provider_called=True)
-        from app.decision.brand_direct import classify_excerpt, is_independent
+        from app.decision.brand_direct import classify_excerpt, is_independent, is_reference
+        records = list(records[:5])
+        if not any(_reference_host(r, is_reference) for r in records):
+            # Fallback (controller decision 2026-10-17): the general search often
+            # returns no reference page. One more fixed search, same query,
+            # restricted to Wikipedia; still no model or user text. Its results
+            # only feed the reference-page check below, never grant by themselves.
+            fallback = await self._wikipedia_fallback(query)
+            records = records + [r for r in fallback if _reference_host(r, is_reference)]
         evidence, seen = [], set()
-        for record in records[:5]:
+        for record in records:
             try:
                 source = public_url(record.source_url)
             except (UnsafeURL, ValueError):
@@ -165,13 +173,25 @@ class SellerResearch:
                 retrieved_at=record.retrieved_at, seller_domain=host.lower().rstrip(".").removeprefix("www."),
                 evidence_type="search_snippet", claim_status="unknown",
                 finding="seller_identity", polarity="neutral", data_mode="partial"))
-        reference = await self._reference_page_support(records[:5], host, seen)
+        reference = await self._reference_page_support(records, host, seen)
         if reference is not None:
             # The page span replaces that URL's snippet so counts stay per record.
-            evidence = [e for e in evidence if str(e.source_url) != str(reference.source_url)] + [reference]
+            evidence = [reference] + [e for e in evidence if str(e.source_url) != str(reference.source_url)]
+        evidence = evidence[:5]
+        received = min(5, max(received, len(evidence)))
         status = "partial" if evidence else "filtered" if received else "empty"
         return ResearchResult(evidence, status, provider_called=True, records_received=received,
                               records_filtered=received - len(evidence))
+
+    async def _wikipedia_fallback(self, query):
+        if not hasattr(self.provider, "search_with_status"):
+            return []
+        try:
+            async with asyncio.timeout(10):
+                response = await self.provider.search_with_status(query, include_domains=("wikipedia.org",))
+        except (ResearchUnavailable, TimeoutError, TypeError):
+            return []
+        return list(response.records[:5])
 
     async def _reference_page_support(self, records, host, seen) -> Evidence | None:
         """Read one returned reference page (e.g. Wikipedia) through the fixed Extract API.
@@ -224,3 +244,10 @@ class SellerResearch:
                         evidence_type="search_snippet", claim_status="unknown",
                         finding="seller_identity", polarity="neutral", data_mode="partial")
         return None
+
+
+def _reference_host(record, is_reference) -> bool:
+    try:
+        return is_reference(urlsplit(public_url(record.source_url)).hostname)
+    except (UnsafeURL, ValueError):
+        return False
