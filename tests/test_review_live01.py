@@ -163,3 +163,7 @@ def test_whole_word_region_and_short_full_sentence_still_match():
     assert _kept("Ships in 30 business days from our warehouse.", region="USD") != []
     assert _kept("Final sale.") != []
     assert _kept("No returns.") != []
+
+
+def test_question_is_not_a_merchant_statement():
+    assert _kept("Ships in 30 business days?", policy="Ships in 30 business days? Yes.") == []

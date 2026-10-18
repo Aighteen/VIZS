@@ -92,7 +92,9 @@ def standalone_span(value: str, content: str, *, quote: bool = False) -> str | N
     span = exact_span(value, content)
     if span is None:
         return None
-    if quote and (len(_WORD.findall(span)) < 2 or sum(not c.isspace() for c in span) < 8):
+    # A question ("Does X accept returns?") states no promise.
+    if quote and (len(_WORD.findall(span)) < 2 or sum(not c.isspace() for c in span) < 8
+                  or span.rstrip().endswith("?")):
         return None
     start = content.find(span)
     while start >= 0:
