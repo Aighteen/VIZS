@@ -61,5 +61,14 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
         if key in seen:
             continue
         seen.add(key)
-        rows.append(row)
+        # Exact spans do not entail a model's interpretation. Only deterministic
+        # expectation wording is exposed as the authoritative explanation.
+        descriptions = {
+            "supported_as_statement": "Merchant statement in retrieved content; fulfillment unverified.",
+            "independently_corroborated": "Statement also appears in an independent retrieved source; fulfillment unverified.",
+            "conflicting": "Potentially differing terms; compare the quoted conditions and applicability.",
+            "not_disclosed": "Not disclosed in inspected sources.",
+            "unavailable": "This check was unavailable; no conclusion was drawn.",
+        }
+        rows.append(row.model_copy(update={"explanation": descriptions[row.status]}))
     return sheet.model_copy(update={"seller_domain": domain, "sources": list(registry.values()), "records": rows})

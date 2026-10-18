@@ -50,7 +50,7 @@ def test_promise_conflict_phone_output_retains_both_quotes_and_links():
     sheet = PromiseSheet.model_validate_json(Path("tests/fixtures/promise_conflict.json").read_text())
     assessment.promise_sheet = validate_promise_sheet(sheet, sheet.sources)
     text = format_sms(assessment)
-    assert "Conditional conflict" in text
+    assert "Potentially differing terms; compare conditions" in text
     assert '"Free returns."' in text
     assert '"US customers pay return shipping."' in text
     assert "https://shop.example/returns" in text

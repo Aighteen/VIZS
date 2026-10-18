@@ -123,3 +123,30 @@ def test_no_evidence_is_not_sitewide_absence():
     from app.decision import validate_promise_sheet
     sheet = promise_fixture("missing")
     assert not validate_promise_sheet(sheet, []).records
+
+
+@pytest.mark.parametrize("status, explanation", [
+    ("supported_as_statement", "Merchant statement in retrieved content; fulfillment unverified."),
+    ("conflicting", "Potentially differing terms; compare the quoted conditions and applicability."),
+    ("not_disclosed", "Not disclosed in inspected sources."),
+    ("unavailable", "This check was unavailable; no conclusion was drawn."),
+])
+def test_model_interpretation_never_becomes_authoritative(status, explanation):
+    from app.decision import validate_promise_sheet
+    name = {"supported_as_statement": "supported", "conflicting": "conflict", "not_disclosed": "missing", "unavailable": "unavailable"}[status]
+    sheet = promise_fixture(name)
+    sheet.records[0].explanation = "Definitely a scam. Authenticity guaranteed. Return shipping costs $25. No policies exist anywhere."
+    result = validate_promise_sheet(sheet, sheet.sources)
+    assert result.records[0].explanation == explanation
+    assert "$25" not in result.model_dump_json()
+
+
+def test_unscoped_differing_quotes_are_qualified_not_definitive_conflict():
+    from app.decision import validate_promise_sheet
+    sheet = promise_fixture()
+    sheet.records[0].conditions.region = None
+    sheet.sources[1].content = "Canada customers pay return shipping. Unopened items within 30 days."
+    sheet.records[0].quotes[1].quote = "Canada customers pay return shipping."
+    result = validate_promise_sheet(sheet, sheet.sources)
+    assert "Potentially differing terms" in result.records[0].explanation
+    assert "Canada" in result.records[0].quotes[1].quote
