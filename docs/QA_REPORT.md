@@ -139,3 +139,46 @@ Summary for 13 IDs: before, **9 covered / 3 weak / 1 missing**. After, **12 cove
 4. **QA-04** (PH-03/SEC-01; owner PH). `app/adapters/spectrum/src/launch.mjs:249` passes `{...d.env, ...cfg}` to the bridge, so it receives `XAI_API_KEY`/`TAVILY_API_KEY`, which it does not need. The forwarding filter at `:259` redacts only the three Spectrum values, so a forwarded status line containing a provider key would be printed. Expected: least-privilege bridge env and redaction of every credential. Test: `qa-launch.test.mjs` "provider keys are not handed to the bridge…" (todo). Low severity: the bridge does not print keys today.
 
 Observations: extension `host_permissions` cover only port 8000 (dev_server default). The launcher's API defaults to 8787 and is used by the bridge, not the extension. SEC-01 re-scan after the merge: no new credentials; the only phone-like strings are fictional `+1555…` values in `launch.test.mjs:11,187,192` and the QA tests, all labeled synthetic. The tracked-file test allows only 555 numbers.
+
+## Round 2: independent verification of the fixes (merged `main` at 6d9e512)
+
+### Round 2 questions for tech lead
+
+- **Q6 (D).** QA-01 excludes evidence from the listing host and its subdomains, but not from a parent domain. A listing at `store.synthetic-shop.com` with "official authorization" evidence hosted on `synthetic-shop.com` still gives LOWER_RISK (verified with a probe). That is right if the parent is the manufacturer (for example `store.brand.com` with `brand.com`), and wrong if the parent is the seller's own site. Without public-suffix and ownership data, Python cannot tell the two apart. Should the parent registrable domain also be excluded?
+- **Q7 (A).** The Q1 rule covers only `/evaluate` and `/evaluate-message`. With `VIZS_ENABLE_MOCK_SMS=true` and live mode, `/api/v1/mock/messages` still accepts a cross-site `text/plain` POST that has an `Origin`. A mocked probe returned 202 and called Grok, Tavily search, Tavily extract and RDAP. Should the Q1 rule extend to the mock route, or should mock and live be mutually exclusive?
+- **Q8 (D).** Q4 is lexical. "100 Pike Street, Seattle. Returns go to our warehouse." keeps a supported `shipping_origin` row because "warehouse" appears, even though here it is about returns. Is this acceptable, or should the origin wording be required in the same sentence as a shipping verb?
+- **Choice (b) input for the human.** Replacing bare domains also hits ordinary text: "Chanel No.5 Eau.de Parfum" becomes "Chanel No.5 [link removed] Parfum", and "2-3 days.Free returns" becomes "2-3 [link removed] returns". "Dr.Smith" is replaced entirely. The merchant's own domain inside a quote is replaced too, and the labeled source link stays.
+
+### Round 2 commands and results
+
+| Suite | Fixer's run | After my round-2 files |
+|---|---|---|
+| `python -m pytest -q -p no:cacheprovider` | **362 passed**, 0 xfailed | **453 passed, 13 xfailed** (new `tests/test_qa_round2.py`: 91 passed, 13 strict xfails) |
+| `cd extension && node --test test/*.test.js` | **75 pass** | **77 pass** (new `test/qa-round2.test.js`) |
+| `cd app/adapters/spectrum && npm test` | **35 pass**, 0 todo | 35 pass |
+| `node --test src/*.test.mjs` | n/a | **38 pass** (new `src/qa-round2.test.mjs`) |
+
+`npm test` lists its files explicitly, so it does not include `qa-round2.test.mjs`. A would need to add it to `package.json`.
+
+### Verification of each fix
+
+| Item | Verdict | Evidence (adversarial cases) |
+|---|---|---|
+| QA-01 | **fixed** | Seller, `www.`, subdomain, multi-level subdomain, uppercase and trailing-dot hosts never give LOWER_RISK. The manufacturer domain, lookalike `synthetic-shop.com.evil-net.com`, `evil-synthetic-shop.com` and `notsynthetic-shop.com` still can. The parent-domain case is Q6. |
+| QA-02 | **fixed for ASCII; gap QA-08** | 14 forms are neutralized in quotes and conditions: scheme in any case, port/query/fragment, `www.`, multi-label, punycode, email, `mailto://`, parenthesized, trailing dot, `javascript://`. The only remaining links are labeled source URLs. Choice (b) behaves as described. Internationalized domains are not neutralized (QA-08). |
+| QA-03 | **fixed for prose; gap QA-07** | `(…/p).`, `…/p).`, balanced and multiple parentheses, double-quoted URL, dot then newline, and the extension's `…/perfume. price $20` all follow the documented rule. Seller vs lookalike URLs stay distinct. However, the extension puts the tab href at the very end of `message_text`, so trailing `.` (no price), `?`, `!`, `;`, `:` or an unmatched `)` gets trimmed (QA-07). |
+| QA-04 | **fixed** | `NODE_OPTIONS`, `AWS_SECRET_ACCESS_KEY`, `GITHUB_TOKEN`, `OPENAI_API_KEY`, `npm_config_*`, `VIZS_PROVIDER_MODE`, provider keys and the extension token are all withheld from the bridge. Credentials from env, spectrum `.env` and root `.env` are suppressed even inside status-prefixed lines. Env `VIZS_PROVIDER_MODE=live` never adds `--live`. |
+| Q1 | **implemented as decided** | Origin `null`, empty, hostile, the allowed extension origin and loopback all give 403 with zero provider calls or DNS. Media-type matching is exact and case-insensitive: `Application/JSON` passes; `json-patch+json`, `merge-patch+json`, a comma list, `text/json` and an empty type give 415. A chunked 40 KB body gets 403/415 before 413. The extension route needs JSON, and its 415s use no budget. The real extension headers are accepted. Node `fetch` (used by the bridge) sends no Origin (loopback probe), so the bridge keeps working. |
+| Choice (a) | **behaves as described** | A declared Content-Length over the cap gives 413 before 415 on all three routes. An Origin on a local route still gives 403 first. |
+| Q2 | **implemented** | Unavailable, timeout and invalid output, on both evaluate-message and the extension route, say "try again later" and never "send the URL" or "resend". Offline mode does the same. A missing or ambiguous URL still asks for one. |
+| Q4 | **implemented; gap QA-06** | Addresses and locations ("Made in France", "Based in New Jersey") become `not_disclosed`, and the address never reaches the phone reply. Explicit wording is kept. Matching is by substring, though (QA-06). The "unrelated part of the quote" case is Q8. |
+
+### Round 2 findings
+
+5. **QA-06** (Q4; owner D). `app/decision/promises.py:265` `_has_origin_wording` uses substring matching, so "**Origin**al packaging", "Ab**origin**al" and "con**sent from**" count as origin wording, and an address-only `shipping_origin` row stays supported. Expected: whole-word or whole-phrase matching. Three strict xfails: `test_Q4_origin_wording_must_be_whole_words`.
+6. **QA-07** (INPUT-01/QA-03; owner B, or EXT can mitigate). `app/services/grok.py:_trim_url`, together with `extension/src/lib/request.js:41`, which puts the href last. Valid tab hrefs ending in `.` (no price), `?`, `!`, `;`, `:` or an unmatched `)` are trimmed, so Grok's literal URL is rejected or a different URL is researched. Possible fixes: the extension wraps the URL as `<href>`, which the backend regex already excludes, or always appends trailing text; or the backend skips trimming for the extension channel. Seven strict xfails: `test_QA03_backend_extracts_exact_extension_href_with_trailing_punctuation`.
+7. **QA-08** (QA-02; owner D). `app/decision/sms.py:_LINKISH` only matches ASCII labels and TLDs. Homoglyph IDN hosts (`phish-аttacker.com`), Unicode TLDs (`.рф`) and Cyrillic labels pass through unchanged into the phone reply. I could not check iMessage linkification offline, but it auto-links IDN domains. Three strict xfails.
+
+Observations (no xfail):
+- QA-03 regression: a possessive after a host ("Is https://shop.com's listing ok?") now yields no URL, because the apostrophe is kept, so the bot asks for a URL.
+- Bare IPv4 with a path (`203.0.113.9/claim`) and `tel:` numbers in quotes are not neutralized. Whether they become tappable is not verified.
