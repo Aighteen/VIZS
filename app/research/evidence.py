@@ -108,3 +108,109 @@ class SellerResearch:
         return ResearchResult(evidence, status, provider_called=True,
                               records_received=received, records_filtered=received-len(evidence),
                               source_records=list(records[:5]))
+
+    async def brand_direct_with_status(self, plan) -> ResearchResult:
+        """One fixed-query search for independent pages naming the listing's site official.
+
+        Results become seller_identity search snippets, never verified facts;
+        app/decision/brand_direct re-checks them deterministically. Pages on the
+        seller's own registrable domain are dropped here and ignored there.
+        """
+        from app.decision.brand_direct import listing_eligible
+        from app.decision.rules import registrable_domain
+        if not plan.product_url or plan.requires_user_input or plan.intent != "evaluate_purchase":
+            return ResearchResult([], "skipped")
+        # Only the domain name goes to the fixed search provider; the merchant
+        # URL is never fetched here, so no second DNS resolution is needed.
+        # The workflow skips this query when seller research found the URL unsafe.
+        try:
+            host = urlsplit(public_url(str(plan.product_url))).hostname
+        except (UnsafeURL, ValueError):
+            return ResearchResult([], "unsafe_url")
+        site = registrable_domain(host)  # query text only; granting uses brand_direct.grant_key
+        if not listing_eligible(host):
+            return ResearchResult([], "skipped")
+        # Backend-built query from the listing's registrable domain only; no
+        # model-extracted text (brand, task query) reaches the provider.
+        query = f'"{site}" official website'
+        try:
+            async with asyncio.timeout(10):
+                if hasattr(self.provider, "search_with_status"):
+                    response = await self.provider.search_with_status(query)
+                    records, received = response.records, response.records_received
+                else:
+                    records = await self.provider.search(query)
+                    received = min(len(records), 5)
+        except ResearchUnavailable as exc:
+            return ResearchResult([], "timeout" if exc.reason == "timeout" else "unavailable", provider_called=True)
+        except TimeoutError:
+            return ResearchResult([], "timeout", provider_called=True)
+        from app.decision.brand_direct import classify_excerpt, is_independent
+        evidence, seen = [], set()
+        for record in records[:5]:
+            try:
+                source = public_url(record.source_url)
+            except (UnsafeURL, ValueError):
+                continue
+            excerpt = record.excerpt[:2000]
+            # Keep only independent pages that bear on the site's official status.
+            if (source in seen or not is_independent(urlsplit(source).hostname, host)
+                    or classify_excerpt(excerpt, host) == "neutral"):
+                continue
+            seen.add(source)
+            evidence.append(Evidence(
+                claim=("Unverified search excerpt about the site's official status: " + excerpt)[:1000],
+                source_url=source, source_title=record.title or None, excerpt=excerpt,
+                retrieved_at=record.retrieved_at, seller_domain=host.lower().rstrip(".").removeprefix("www."),
+                evidence_type="search_snippet", claim_status="unknown",
+                finding="seller_identity", polarity="neutral", data_mode="partial"))
+        reference = await self._reference_page_support(records[:5], host, seen)
+        if reference is not None:
+            evidence.append(reference)
+        status = "partial" if evidence else "filtered" if received else "empty"
+        return ResearchResult(evidence, status, provider_called=True, records_received=received,
+                              records_filtered=received - len(evidence))
+
+    async def _reference_page_support(self, records, host, seen) -> Evidence | None:
+        """Read one returned reference page (e.g. Wikipedia) through the fixed Extract API.
+
+        Search snippets rarely include an infobox, so when no reference source
+        already supports the listing, the first returned reference-source URL is
+        extracted as markdown (link targets kept, so "[Official website](https://...)"
+        shows its domain). Only the single line that names the listing's site as
+        official is kept, as an exact span of retrieved text; the decision layer
+        re-checks it. Any provider failure just means no reference support.
+        """
+        from app.decision.brand_direct import classify_excerpt, is_independent, is_reference
+        if not hasattr(self.provider, "extract_sources"):
+            return None
+        candidates = []
+        for record in records:
+            try:
+                source = public_url(record.source_url)
+            except (UnsafeURL, ValueError):
+                continue
+            source_host = urlsplit(source).hostname
+            if is_reference(source_host) and is_independent(source_host, host):
+                if source in seen:
+                    return None  # its snippet already supports the listing
+                candidates.append((source, record))
+        if not candidates:
+            return None
+        source, record = candidates[0]
+        try:
+            pages = await self.provider.extract_sources([source], markdown=True, max_chars=40000,
+                                                        content_kind="reference_page")
+        except ResearchUnavailable:
+            return None
+        for page in pages:
+            for line in page.excerpt.splitlines():
+                excerpt = line.strip()[:2000]
+                if excerpt and classify_excerpt(excerpt, host) == "supports":
+                    return Evidence(
+                        claim=("Unverified reference page line about the site's official status: " + excerpt)[:1000],
+                        source_url=source, source_title=record.title or None, excerpt=excerpt,
+                        retrieved_at=page.retrieved_at, seller_domain=host.lower().rstrip(".").removeprefix("www."),
+                        evidence_type="search_snippet", claim_status="unknown",
+                        finding="seller_identity", polarity="neutral", data_mode="partial")
+        return None
