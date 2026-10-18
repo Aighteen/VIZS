@@ -505,3 +505,9 @@ def test_payment_processing_time_is_not_order_processing_time():
             "Allow up to 3 business days for standard orders to be dispatched.\n")
     rows = fallback_rows("https://frankgreen-synthetic.com.au/products/bottle", page)
     assert rows["processing_time"][0] == "Allow up to 3 business days for standard orders to be dispatched."
+
+
+def test_faq_question_is_not_quoted_as_a_statement():
+    page = "DOES LE LABO ACCEPT RETURNS IN THE US?\nWe accept returns of unopened items within 30 days in the US.\n"
+    rows = fallback_rows("https://www.shop-synthetic.com/p", page)
+    assert rows["returns"] == ("We accept returns of unopened items within 30 days in the US.", "US", None)

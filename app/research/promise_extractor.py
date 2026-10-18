@@ -135,7 +135,8 @@ def _sentences(registry, home=None):
         for line in source.content.splitlines():
             for sentence in _SENTENCE.split(line):
                 sentence = sentence.strip()
-                if 8 <= len(sentence) <= 400:
+                # FAQ questions ("Does X accept returns in the US?") state nothing.
+                if 8 <= len(sentence) <= 400 and not sentence.endswith("?"):
                     yield source.source_id, sentence
 
 
