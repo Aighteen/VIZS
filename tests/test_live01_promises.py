@@ -230,7 +230,7 @@ def test_quote_stitched_across_windows_or_absence_claim_on_trimmed_page_is_dropp
     assert "proposed 2 rows, 0 kept" in sheet.records[0].explanation
 
 
-@pytest.mark.parametrize("evaluation, grok, expected", [(100, 30, 40.0), (100, 60, 10.0), (120, 8, 40.0), (40, 30, 5.0)])
+@pytest.mark.parametrize("evaluation, grok, expected", [(100, 30, 40.0), (100, 60, 10.0), (120, 8, 55.0), (40, 30, 5.0)])
 def test_reader_timeout_fits_evaluation_budget(evaluation, grok, expected):
     from app.config import Settings
     from app.research.promise_extractor import reader_timeout
@@ -271,3 +271,25 @@ def test_reader_schema_is_flat_and_its_replies_parse_as_candidates():
     reply = {"records": [{"topic": "returns", "status": "supported_as_statement", "explanation": "x",
                           "quotes": [{"source_id": "source_1", "quote": "Returns within 30 days."}]}]}
     assert PromiseCandidates.model_validate(reply).records[0].topic == "returns"
+
+
+@pytest.mark.parametrize("elapsed, expected", [(10, 55.0), (45, 45.0), (88, 5.0), (0, 55.0)])
+def test_reader_timeout_uses_remaining_budget(elapsed, expected):
+    from app.config import Settings
+    from app.research.promise_extractor import reader_timeout
+    assert reader_timeout(Settings(evaluation_timeout_seconds=100), elapsed) == expected
+
+
+def test_runtime_gives_promise_request_the_remaining_budget():
+    from tests.test_brand_store_acceptance import LE_LABO, brand_scenario, evaluate, faithful_promises
+    seen = []
+    inner = faithful_promises(list(LE_LABO.stated.items()))
+
+    def promise(request):
+        seen.append(request.extensions["timeout"]["read"])
+        return inner(request)
+
+    assessment, _ = evaluate(brand_scenario(LE_LABO, promise=promise))
+    # Offline the earlier stages take ~0 s, so the reader gets the 55 s cap, not the plan's 30 s.
+    assert len(seen) == 1 and 50 < seen[0] <= 55
+    assert any(r.status == "supported_as_statement" for r in assessment.promise_sheet.records)

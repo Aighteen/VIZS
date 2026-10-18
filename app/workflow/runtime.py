@@ -1,6 +1,8 @@
 """Application composition only; B/C/D retain extraction, research and policy."""
 from contextlib import asynccontextmanager
 import asyncio
+import contextvars
+import time
 from urllib.parse import urlsplit
 
 import httpx
@@ -32,11 +34,12 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
         provider = TavilyProvider(settings.tavily_api_key if live else None, transport=tavily_transport,
                                   extract_timeout=14)
         research = SellerResearch(provider, destination_validator=destination_validator)
-        promise_timeout = reader_timeout(settings)
-        # Dedicated request bound: the shared client's read timeout is the plan's.
-        promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model,
-                                                     request_timeout=promise_timeout)
-                          if completion is not None else None)
+        # Per-evaluation start, so the promise reader gets the remaining budget.
+        started = contextvars.ContextVar("evaluation_started", default=None)
+
+        async def timed_extract(request):
+            started.set(time.monotonic())
+            return await extractor.extract(request)
 
         async def resolve_promises(plan, records):
             # Offline/missing research configuration must not cause extraction or registry requests.
@@ -46,10 +49,16 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
                                                        destination_validator=destination_validator)
             policy_records = collected.records + records
             usable_page = any(record.content_kind == "merchant_page" for record in collected.records)
-            extractor = PromiseExtractor(promise_client if usable_page else None, timeout_seconds=promise_timeout)
+            start = started.get()
+            promise_timeout = reader_timeout(settings, None if start is None else time.monotonic() - start)
+            # Dedicated request bound: the shared client's read timeout is the plan's.
+            promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model,
+                                                         request_timeout=promise_timeout)
+                              if completion is not None and usable_page else None)
+            promise_extractor = PromiseExtractor(promise_client, timeout_seconds=promise_timeout)
             # Independent context lookup never expands its fixed .com/.net registry allowlist.
             sheet, domain = await asyncio.gather(
-                extractor.extract(plan, policy_records, collection=collected),
+                promise_extractor.extract(plan, policy_records, collection=collected),
                 DomainLookup(transport=domain_transport).lookup(urlsplit(str(plan.product_url)).hostname))
             return sheet.model_copy(update={"domain_context": domain})
 
@@ -72,5 +81,5 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
             return assessment
 
         yield EvaluationWorkflow(Contracts(ShoppingRequest, OrchestratorPlan, Assessment),
-                                 extractor.extract, research_with_status, decision, settings,
+                                 timed_extract, research_with_status, decision, settings,
                                  promise_resolver=resolve_promises)

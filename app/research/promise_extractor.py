@@ -120,13 +120,20 @@ class XAIPromiseCompletionClient(XAICompletionClient):
                          schema_name="promise_records", max_tokens=2000, request_timeout=request_timeout)
 
 
-def reader_timeout(settings) -> float:
-    """Reader bound that fits the evaluation budget after worst-case earlier stages.
+def reader_timeout(settings, elapsed: float | None = None) -> float:
+    """Reader bound that fits the evaluation budget.
 
-    Earlier stages are bounded by the plan call (grok timeout), seller research (10 s)
-    and policy extract (15 s); 5 s is kept as margin. A 20 s bound timed out live (LIVE-01).
+    With ``elapsed`` (seconds already spent on this evaluation) the reader gets the
+    remaining budget less a 10 s margin for decision and formatting, up to 55 s.
+    Without it, earlier stages are assumed worst case: plan call (grok timeout),
+    seller research (10 s) and policy extract (15 s), plus a 5 s margin.
+    The reader did not finish within 20 s or 40 s live (LIVE-01).
     """
-    return max(5.0, min(40.0, settings.evaluation_timeout_seconds - settings.grok_timeout_seconds - 30))
+    if elapsed is None:
+        budget = settings.evaluation_timeout_seconds - settings.grok_timeout_seconds - 30
+    else:
+        budget = settings.evaluation_timeout_seconds - elapsed - 10
+    return max(5.0, min(55.0, budget))
 
 
 # Privacy-safe stage notes: fixed wording and counts only, never URLs or page text.
