@@ -34,7 +34,7 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
             elif row.status == "unavailable":
                 detail = f" {label}: check unavailable."
             else:
-                qualifier = "Conditional conflict" if row.status == "conflicting" else "Merchant statement" if row.status == "supported_as_statement" else "Corroborated statement"
+                qualifier = "Potentially differing terms; compare conditions" if row.status == "conflicting" else "Merchant statement" if row.status == "supported_as_statement" else "Corroborated statement"
                 conditions = "; ".join(v for v in row.conditions.model_dump().values() if v)
                 detail = f" {qualifier} ({label}" + (f"; {conditions}" if conditions else "") + "):"
                 for quote in row.quotes:

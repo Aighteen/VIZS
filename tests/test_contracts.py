@@ -50,3 +50,11 @@ def test_promise_contract_fixtures(name):
     assert sheet.domain_context.status == "unavailable"
     assert sheet.image_context.status == "unavailable"
     assert all(source.data_mode == "mock" for source in sheet.sources)
+
+
+def test_live_assessment_cannot_hide_mock_promise_sources():
+    from app.models import PromiseSheet
+    data = json.loads(Path("tests/fixtures/insufficient.json").read_text())
+    data.update(data_mode="live", evidence=[], promise_sheet=json.loads(Path("tests/fixtures/promise_conflict.json").read_text()))
+    with pytest.raises(ValidationError):
+        Assessment.model_validate(data)
