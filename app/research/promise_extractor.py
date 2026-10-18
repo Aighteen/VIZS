@@ -112,9 +112,23 @@ _LEXICAL_TOPICS = (
 )
 
 
-def _sentences(registry):
+def _page_region(url) -> str | None:
+    """Region a page states in its URL (ccTLD or locale path); None if it does not say."""
+    parts = urlsplit(str(url))
+    host = (parts.hostname or "").lower()
+    for suffix, region in _HOST_REGIONS:
+        if host.endswith(suffix):
+            return region
+    return _PATH_REGIONS.get(parts.path.strip("/").split("/", 1)[0].lower())
+
+
+def _sentences(registry, home=None):
     for source in registry:
         if source.content_kind != "merchant_page":
+            continue
+        # A help page for another region (e.g. /ca/help on a US listing) is skipped.
+        page = _page_region(source.url)
+        if home and page and page != home:
             continue
         for line in source.content.splitlines():
             for sentence in _SENTENCE.split(line):
@@ -158,9 +172,9 @@ def listing_region(url) -> str | None:
     for suffix, region in _HOST_REGIONS:
         if host.endswith(suffix):
             return region
-    first = parts.path.strip("/").split("/", 1)[0].lower()
-    if first in _PATH_REGIONS:
-        return _PATH_REGIONS[first]
+    stated = _page_region(url)
+    if stated:
+        return stated
     return "US" if host.endswith((".com", ".net", ".org", ".us", ".co", ".shop", ".store")) else None
 
 
@@ -187,7 +201,7 @@ def lexical_candidates(registry, listing_url=None) -> list[PromiseRecord]:
     for order_topic in _LEXICAL_TOPICS:
         topic, needed, excluded, strong = order_topic
         ranked = []
-        for index, (source_id, sentence) in enumerate(_sentences(registry)):
+        for index, (source_id, sentence) in enumerate(_sentences(registry, home)):
             if excluded and re.search(excluded, sentence, re.IGNORECASE):
                 continue
             if not all(re.search(pattern, sentence, re.IGNORECASE) for pattern in needed):
@@ -355,15 +369,24 @@ class PromiseExtractor:
         # The reader could not be reached or did not answer in time (timeout, provider
         # error such as HTTP 402): fall back to page wording. Invalid or cut-off output
         # is not retried this way, so a misbehaving reply never turns into rows.
-        fallback = message is not None and proposed is None and reader.startswith(
-            ("promise reader timed out", "promise reader request failed"))
-        if fallback:
-            sheet = sheet.model_copy(update={"records": lexical_candidates(registry, plan.product_url)})
         validated = validate_promise_sheet(sheet, sources=registry, seller_domain=seller)
+        # Topics the reader left empty (or every topic, when the request failed or
+        # timed out) are filled from page wording. Not after invalid or cut-off output,
+        # nor after the reader proposed a row that failed quote checks: a misbehaving
+        # reply never turns into rows.
+        fill = message is not None and (
+            (proposed is not None and len(validated.records) == proposed)
+            or reader.startswith(("promise reader timed out", "promise reader request failed")))
         if proposed is not None:
             reader = f"promise reader proposed {proposed} rows, {len(validated.records)} kept after quote checks"
-        elif fallback:
-            reader += f"; {len(validated.records)} rows taken from page wording"
+        if fill:
+            covered = {row.topic for row in validated.records}
+            lexical = [row for row in lexical_candidates(registry, plan.product_url) if row.topic not in covered]
+            extra = validate_promise_sheet(sheet.model_copy(update={"records": lexical}),
+                                           sources=registry, seller_domain=seller).records
+            validated = validated.model_copy(update={"records": validated.records + extra})
+            if extra or proposed is None:
+                reader += f"; {len(extra)} rows taken from page wording"
         explanation = "No validated statement was retained for this topic; this is not proof the merchant omits a policy."
         if collection is not None:
             explanation += f" Check details: {_extract_note(collection)}; {reader}."

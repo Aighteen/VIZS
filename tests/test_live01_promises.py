@@ -468,3 +468,33 @@ def test_member_and_opt_in_terms_are_named_and_issue_deadlines_are_not_transit()
     assert rows["returns"][2] == "for Nike Members"
     assert rows["return_cost"] == ("When you opt-in for coverage at checkout, your return label is included for free.", None, "opt-in")
     assert "transit_time" not in rows
+
+
+def test_topics_the_reader_left_empty_are_filled_from_page_wording():
+    reply = json.dumps({"records": [row("returns", "supported_as_statement",
+                                        "Unopened items may be returned within 30 days of delivery.")]})
+    sheet, _ = fallback_sheet(reply)
+    supported = {r.topic for r in sheet.records if r.status == "supported_as_statement"}
+    assert supported == {"shipping_origin", "processing_time", "transit_time", "returns", "return_cost"}
+    sheet, _ = fallback_sheet(json.dumps({"records": []}))
+    assert sum(r.status == "supported_as_statement" for r in sheet.records) == 5
+
+
+def test_no_fill_after_a_reader_row_fails_quote_checks():
+    reply = json.dumps({"records": [row("returns", "supported_as_statement", "Returns are free forever, no questions.")]})
+    sheet, _ = fallback_sheet(reply)
+    assert all(r.status == "unavailable" for r in sheet.records)
+    assert "proposed 1 rows, 0 kept after quote checks." in sheet.records[0].explanation
+
+
+def test_help_page_for_another_region_is_not_quoted():
+    from app.research.promise_extractor import lexical_candidates, source_registry
+    listing = "https://www.shop-synthetic.com/t/shoe"
+    sources = [SourceRecord("https://www.shop-synthetic.com/ca/help/returns", "Retrieved merchant page",
+                            "Unworn shoes can be returned within 30 days of delivery.", datetime.now(timezone.utc),
+                            content_kind="merchant_page"),
+               SourceRecord("https://www.shop-synthetic.com/help/returns", "Retrieved merchant page",
+                            "Unworn shoes can be returned within 60 days of delivery.", datetime.now(timezone.utc),
+                            content_kind="merchant_page")]
+    rows = lexical_candidates(source_registry(SimpleNamespace(product_url=listing), sources), listing)
+    assert [r.quotes[0].quote for r in rows] == ["Unworn shoes can be returned within 60 days of delivery."]
