@@ -60,19 +60,19 @@ def check(rows, content=TERMS_TEXT):
 
 # ---------------------------------------------------------------- quote validation
 
-@pytest.mark.parametrize("model_quote, page_span", [
+@pytest.mark.parametrize("topic, model_quote, page_span", [
     # Straight apostrophe for the page's curly one, line break collapsed to a space.
-    ("We'll accept returns of unused products within 30 days of delivery for a full refund.",
+    ("returns", "We'll accept returns of unused products within 30 days of delivery for a full refund.",
      "We’ll accept returns of unused products within 30 days\n   of delivery for a full refund."),
     # Plain spaces for the page's non-breaking spaces.
-    ("Standard delivery takes 3 to 5 business days once your order has shipped.",
+    ("transit_time", "Standard delivery takes 3 to 5 business days once your order has shipped.",
      "Standard delivery takes 3 to 5 business days once your order has shipped."),
     # Exact text is unchanged.
-    ("Return shipping is free with the prepaid label included in your parcel.",
+    ("return_cost", "Return shipping is free with the prepaid label included in your parcel.",
      "Return shipping is free with the prepaid label included in your parcel."),
 ])
-def test_typographic_differences_are_accepted_and_page_characters_are_kept(model_quote, page_span):
-    checked = check([row("returns", model_quote, statement=model_quote)])
+def test_typographic_differences_are_accepted_and_page_characters_are_kept(topic, model_quote, page_span):
+    checked = check([row(topic, model_quote, statement=model_quote)])
     assert len(checked.records) == 1
     kept = checked.records[0]
     assert kept.quotes[0].quote == page_span

@@ -52,7 +52,7 @@ Use labeled synthetic fixtures and mocked provider HTTP for automated tests. Nev
 | PH-02 | Duplicate concurrent event / ambiguous send failure | One evaluation/reply attempt; no blind retry | Automated |
 | PH-03 | Fresh checkout launch and stop | Documented launcher; hidden/bounded processes; no duplicate listener; clean shutdown | Automated + local manual |
 | PH-04 | Live registered-phone URL test | Provider outcomes logged without private content; actual user confirms cited reply receipt | Manual/live, rerun only authorized |
-| LIVE-01 | Live extension against real listing | Grok/Tavily source provenance and result panel verified, no screenshot fixture misrepresentation | Manual/live pending |
+| LIVE-01 | Live extension against real listing | Grok/Tavily source provenance and result panel verified, no screenshot fixture misrepresentation | First run 2026-10-17: promise rows all unavailable (bug). Re-run 2026-10-18 via backend `/api/v1/evaluate-message` on the same Le Labo URL: LOWER_RISK (brand-direct), 4 quoted promise rows; extension panel re-check pending |
 | SEC-01 | Git/package/log review | No real .env, phone numbers, credentials, PAN/CVV or browsing history | Automated review |
 | OPS-01 | Full regression and setup instructions | Existing tests pass; exact commands/outputs/handoffs recorded | Automated + review |
 

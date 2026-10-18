@@ -162,10 +162,11 @@ def test_Q4_explicit_origin_wording_is_kept(quote):
 
 def test_Q4_corroborated_address_also_downgraded_and_other_topics_untouched():
     address = "100 Pike Street, Seattle, WA"
-    sources = [source("a", LISTING, address), source("b", "https://independent-review.com/x", address, kind="independent_page")]
+    returns = "Returns accepted within 30 days."
+    sources = [source("a", LISTING, f"{address}. {returns}"), source("b", "https://independent-review.com/x", address, kind="independent_page")]
     sheet = PromiseSheet.model_validate({"seller_domain": SELLER, "sources": sources, "records": [
         row("shipping_origin", "independently_corroborated", [("a", address), ("b", address)]),
-        row("returns", "supported_as_statement", [("a", address)])]})
+        row("returns", "supported_as_statement", [("a", returns)])]})
     records = {r.topic: r for r in validate_promise_sheet(sheet, sources).records}
     assert records["shipping_origin"].status == "not_disclosed"
     assert records["returns"].status == "supported_as_statement"

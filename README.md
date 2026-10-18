@@ -48,6 +48,8 @@ VIZS_PROVIDER_MODE=offline
 VIZS_ENABLE_MOCK_SMS=false
 XAI_API_KEY=your_xai_key
 XAI_MODEL=your_supported_model_id
+# Optional: faster non-reasoning model for the promise reader (falls back to XAI_MODEL).
+XAI_PROMISE_MODEL=
 TAVILY_API_KEY=your_tavily_key
 VIZS_GROK_TIMEOUT_SECONDS=30
 VIZS_EVALUATION_TIMEOUT_SECONDS=100

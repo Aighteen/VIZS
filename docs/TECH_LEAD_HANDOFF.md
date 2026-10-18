@@ -53,7 +53,18 @@ This machine has no project `.venv`; the tech lead used a scratch venv. Create o
 - Update README/NEXT_STEPS status, then push to GitHub **only when the human says so**, verify the public repo has no secrets.
 - Human-only: Devpost draft (was due Sat 10:30 PM), video, final submission by 9:15 AM target.
 
-## LIVE-01 result and open bug (latest)
+## LIVE-01 re-run and fixes (latest, 2026-10-18)
+
+Branch `fix/live01-promises` (not pushed). All of (a)-(d) below were built and approved; (e) done.
+
+- **Promise rows** (`app/research/promises.py`, `promise_extractor.py`, `app/decision/promises.py`, `app/services/tavily.py`): tracking params stripped (content params kept verbatim); provider-respelled and canonical extract URLs accepted only on the exact host/path; reader gets policy lines only (<=7000 chars, flat strict schema, 2000 tokens) with a bound from the remaining evaluation budget; privacy-safe "Check details" diagnostics (timeout vs HTTP status); a whole-sentence page-wording fallback when the reader times out or the request fails; quotes must be whole-word, >=2 words, not negated, not questions, and on-topic for their row.
+- **Root cause of empty rows live:** first the Tavily extract URL mismatch, then the Grok promise reader timing out with the default model. Set `XAI_PROMISE_MODEL=grok-4.20-0309-non-reasoning` (optional; falls back to `XAI_MODEL`).
+- **Brand-direct rule** (`app/decision/brand_direct.py`, human decision): LOWER_RISK / CONSIDER_BUYING when a curated reference source (Wikipedia/Wikidata/Britannica) names the listing's exact grant key in an official-site clause or infobox Website row AND its lead sentence describes a brand, not a retailer. One fixed extra Tavily search (`"<domain>" official website`), a Wikipedia-only fallback search, and at most one reference-page extract. Marketplaces, multi-brand retailers, hosting platforms, lookalikes, seller self-claims and adverse/conflicting evidence never qualify. Threat model: `docs/reviews/BRAND_DIRECT_THREAT_MODEL.md` (C1-C15, P1-P11).
+- **Live results (controller `live_check`):** Le Labo (tracking URL) LOWER_RISK / CONSIDER_BUYING in 16 s with the non-reasoning promise model, 4 quoted promise rows, shipping origin "not disclosed", Wikipedia reference cited. Negatives stayed VERIFY_FIRST: Amazon listing, bluemercury.com (after the retailer-lead fix), mecca.com, istore.co.za. Known misses (VERIFY_FIRST): glossier.com, patagonia.com, aesop.com, lelabofragrances.com.au, small brands without Wikipedia.
+- **Open:** one transient xAI HTTP 402 seen (usage 3%); brand-direct depends on Wikipedia content (vandalism risk accepted for the hackathon); a Wikidata P856 lookup would raise recall.
+- Suites at merge: 925 Python, 79 extension, 38 Spectrum.
+
+## LIVE-01 first result and bug (historical)
 
 Live extension run on Le Labo's own store (`https://www.lelabofragrances.com/santal-33-147.html?...` with ~250 chars of ad-tracking params: gclid, gbraid, gad_*). Panel: INSUFFICIENT_EVIDENCE / VERIFY_FIRST, partial data; Tavily search 5 of 5 kept (two Le Labo pages: Terms & Conditions of Sale, Cancellation Rights FAQ, shown as unverified snippets); RDAP context returned; **all five promise rows "Could not be checked"** (unavailable). Record this in ACCEPTANCE_TESTS as LIVE-01 (completed, promise extraction not working live).
 

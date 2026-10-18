@@ -21,6 +21,23 @@ def _has_origin_wording(row: PromiseRecord) -> bool:
     return any(_ORIGIN_RE.search(q.quote) for q in row.quotes)
 
 
+# A quote must also be about its topic: an exact span filed under the wrong topic
+# (live: a no-returns sentence labelled processing_time) is dropped. Lexical, whole
+# words, case-insensitive; "hand-prepared to order" alone is not a processing time.
+_TOPIC_RE = {
+    "processing_time": re.compile(r"\b(?:process\w*|dispatch\w*|ships?|shipped|fulfil\w*|business\s+days?|days?|hours?|weeks?)\b", re.I),
+    "transit_time": re.compile(r"\b(?:deliver\w*|ships?|shipped|shipping|transit|arriv\w*|business\s+days?|days?|weeks?)\b", re.I),
+    "returns": re.compile(r"\b(?:return\w*|refund\w*|exchang\w*|final\s+sale|non-returnable)\b", re.I),
+    "return_cost": re.compile(r"\b(?:return\w*|refund\w*)\b.*\b(?:cost\w*|fees?|charg\w*|pay\w*|paid|free|label|expense\w*|deduct\w*)\b"
+                              r"|\b(?:cost\w*|fees?|charg\w*|pay\w*|paid|free|label|expense\w*|deduct\w*)\b.*\b(?:return\w*|refund\w*)\b", re.I),
+}
+
+
+def _on_topic(row: PromiseRecord) -> bool:
+    pattern = _TOPIC_RE.get(row.topic)
+    return pattern is None or not row.quotes or any(pattern.search(q.quote) for q in row.quotes)
+
+
 # Retrieved pages and model output differ in typography only: curly vs straight
 # quotes and apostrophes, non-breaking/narrow/ideographic spaces, and collapsed
 # whitespace or line breaks. Matching ignores exactly these differences, then the
@@ -169,6 +186,8 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
         if any(value and conditions[name] is None for name, value in stated.items()):
             continue
         row = row.model_copy(update={"conditions": PromiseConditions(**conditions)})
+        if not _on_topic(row):
+            continue
         key = (row.topic, row.status, tuple((q.source_id, q.quote) for q in row.quotes))
         if key in seen:
             continue

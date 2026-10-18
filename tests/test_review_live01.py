@@ -123,17 +123,17 @@ def test_oversize_reader_reply_is_invalid_not_a_crash():
 _POLICY = "Final sale. No returns. Ships in 30 business days from our warehouse. Prices in USD."
 
 
-def _kept(quote, region=None, policy=_POLICY):
+def _kept(quote, region=None, policy=_POLICY, topic="returns"):
     source = PromiseSource(source_id="source_1", url="https://shop.example.org/p", retrieved_at=datetime.now(timezone.utc),
                            content=policy, content_kind="merchant_page", seller_domain="shop.example.org", data_mode="mock")
     sheet = PromiseSheet.model_validate({"seller_domain": "shop.example.org", "records": [
-        {"topic": "returns", "status": "supported_as_statement", "explanation": "x", "merchant_statement": quote,
+        {"topic": topic, "status": "supported_as_statement", "explanation": "x", "merchant_statement": quote,
          "quotes": [{"source_id": "source_1", "quote": quote}], "conditions": {"region": region}}]})
     return validate_promise_sheet(sheet, sources=[source], seller_domain="shop.example.org").records
 
 
 def test_exact_clause_quote_is_kept():
-    assert len(_kept("Ships in 30 business days from our warehouse.")) == 1
+    assert len(_kept("Ships in 30 business days from our warehouse.", topic="processing_time")) == 1
 
 
 def test_negation_dropping_quote_is_rejected():
@@ -145,7 +145,7 @@ def test_trivial_quote_is_rejected():
 
 
 def test_region_condition_needs_word_boundary():
-    assert _kept("Ships in 30 business days from our warehouse.", region="US") == []
+    assert _kept("Ships in 30 business days from our warehouse.", region="US", topic="processing_time") == []
 
 
 def test_multiword_quote_dropping_preceding_negation_is_rejected():
@@ -160,10 +160,21 @@ def test_negated_and_plain_occurrence_keeps_the_plain_one():
 
 
 def test_whole_word_region_and_short_full_sentence_still_match():
-    assert _kept("Ships in 30 business days from our warehouse.", region="USD") != []
+    assert _kept("Ships in 30 business days from our warehouse.", region="USD", topic="processing_time") != []
     assert _kept("Final sale.") != []
     assert _kept("No returns.") != []
 
 
 def test_question_is_not_a_merchant_statement():
-    assert _kept("Ships in 30 business days?", policy="Ships in 30 business days? Yes.") == []
+    assert _kept("Ships in 30 business days?", policy="Ships in 30 business days? Yes.", topic="processing_time") == []
+
+
+def test_quote_filed_under_the_wrong_topic_is_dropped():
+    # Live Le Labo: a no-returns sentence was labelled processing_time.
+    policy = ("Because our creations are hand-prepared to order with personalized labels, "
+              "we generally do not accept returns or exchanges. Orders ship within 2 business days.")
+    misfiled = "Because our creations are hand-prepared to order with personalized labels, we generally do not accept returns or exchanges."
+    assert _kept(misfiled, policy=policy, topic="processing_time") == []
+    assert _kept(misfiled, policy=policy, topic="returns") != []
+    assert _kept("Orders ship within 2 business days.", policy=policy, topic="processing_time") != []
+    assert _kept("Orders ship within 2 business days.", policy=policy, topic="return_cost") == []
