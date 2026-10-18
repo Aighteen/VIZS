@@ -1,0 +1,25 @@
+{
+  "request_id": "fixture-positive",
+  "seller_risk": "LOWER_RISK",
+  "decision": "CONSIDER_BUYING",
+  "summary": "Synthetic official seller authorization example; authenticity is not established.",
+  "evidence": [
+    {
+      "claim": "Synthetic brand directory lists this seller.",
+      "source_url": "https://brand.example/retailers",
+      "source_title": "SYNTHETIC brand directory",
+      "evidence_type": "official",
+      "claim_status": "verified_fact",
+      "retrieved_at": "2026-10-17T20:00:00Z",
+      "excerpt": "SYNTHETIC: shop.example is listed.",
+      "seller_domain": "shop.example",
+      "finding": "seller_authorized",
+      "polarity": "supports",
+      "data_mode": "mock"
+    }
+  ],
+  "missing_information": [
+    "Product authenticity is not established."
+  ],
+  "data_mode": "mock"
+}

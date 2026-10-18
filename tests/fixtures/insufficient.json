@@ -1,0 +1,11 @@
+{
+  "request_id": "fixture-insufficient",
+  "seller_risk": "INSUFFICIENT_EVIDENCE",
+  "decision": "VERIFY_FIRST",
+  "summary": "Synthetic example: seller credibility could not be established.",
+  "evidence": [],
+  "missing_information": [
+    "Independent seller verification"
+  ],
+  "data_mode": "mock"
+}
