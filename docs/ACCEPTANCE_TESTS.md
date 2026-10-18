@@ -77,4 +77,8 @@ This file begins as a test plan. Append actual commit, command, output and IDs c
   - API-01: `tests/test_api.py::test_extension_pairing_and_origin_before_paid_calls`, `test_extension_unconfigured_and_rate_budget`
   - API-02: `tests/test_api.py::test_extension_concurrent_budget_releases_after_error`, `test_extension_unconfigured_and_rate_budget`
   - OUT-03: `tests/test_api.py::test_end_to_end_promise_conflict_shared_by_extension_and_phone`
-- Pending: all EXT-*, PH-03, LIVE-01, and a PH-04 re-run with the promise sheet.
+- Pending: all EXT-*, LIVE-01, and a PH-04 re-run with the promise sheet.
+
+### 2026-10-17, merge `9c293b8` (Photon launcher)
+
+- PH-03: `app/adapters/spectrum/src/launch.mjs`; `npm test` in `app/adapters/spectrum` => 21 passed (bridge 4 + launcher 17), re-run by the tech lead. Real offline `npm run shop:check` on macOS: API ready, clean stop, no leftover process or lock. Windows `taskkill` path untested; live run pending.
