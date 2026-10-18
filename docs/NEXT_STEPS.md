@@ -13,7 +13,7 @@ Checkpoint: `main` at `62f1ac8` ("Merge validated packet A integration"), Saturd
 - Grok extraction, Tavily research, URL/relevance checks, research status counts, labeled unverified links, deterministic risk policy, SMS/message formatter.
 - Promise sheet (G1/G2 in ACCEPTANCE_TESTS.md): D contracts and synthetic fixtures; one bounded Tavily Extract call over up to 3 same-seller pages; Grok promise extraction; Python exact-span validation; supported/conflicting/not_disclosed/unavailable rows; Verisign RDAP registration context for `.com`/`.net` only; image context always unavailable. Both formatters consume the same sheet.
 - Extension backend boundary: `POST /api/v1/extension/evaluate` with bearer pairing token, exact origin allowlist, 6 requests/minute and 1 in flight by default. Rejections happen before provider work. The local `/api/v1/evaluate` and `/api/v1/evaluate-message` routes reject any `Origin` header (403) and non-JSON bodies (415) before evaluation (QA Q1).
-- Tests: 159 Python tests passed on macOS (Python 3.14, fresh venv) on Oct 17. Node bridge suite last recorded 4 passed on Windows; not re-run since (no Node on the macOS machine).
+- Tests: 642 Python, 79 extension, 38 Spectrum tests pass, 0 xfail (macOS, Oct 17). QA ran three rounds (findings QA-01..09 all fixed; see QA_REPORT.md), verdict ready with caveats.
 - Live proof: one registered-phone iMessage round trip (Grok, Tavily 5 returned / 2 retained / 3 filtered, VERIFY_FIRST / partial), handset receipt confirmed by the user. This predates the promise sheet; promise extraction and RDAP have not been exercised live.
 
 ## Not done

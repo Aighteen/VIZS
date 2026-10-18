@@ -13,7 +13,7 @@
 | Chrome extension / pet UI | Implemented in `extension/` (MV3, user-triggered, offline-tested: 52 Node tests, real offline backend smoke, headless Chrome render check). Manual install check and live run pending |
 | Photon iMessage | One registered-phone round trip confirmed by the user (Grok, Tavily 5 returned / 2 retained, VERIFY_FIRST, cited reply). Bounded test bridge, now started and stopped by `npm run shop` (PH-03, offline check passed on macOS). Live re-run pending |
 | SMS, FastAPI Photon webhook, hosting | Not verified; `/webhooks/photon` is deliberately disabled |
-| Tests | 159 Python tests passed (macOS, Python 3.14, fresh venv, Oct 17). Node bridge tests last recorded 4 passed (Windows); not re-run since |
+| Tests | 642 Python, 79 extension and 38 Spectrum (bridge + launcher) tests pass, 0 xfail (macOS, Oct 17). QA verdict: ready with caveats (manual browser and live checks open); see `docs/QA_REPORT.md` |
 
 **Immediate next steps:** save the mandatory Devpost draft (10:30 PM PDT tonight), load and manually check the extension (see `extension/README.md`), then one authorized live run per channel. See [next steps](docs/NEXT_STEPS.md).
 

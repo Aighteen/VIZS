@@ -32,8 +32,8 @@ The tech lead session split work into git worktrees under `.claude/worktrees/` (
 ## Test commands (macOS)
 
 ```sh
-python -m pytest -q                                   # 548 passed at 506e562
-cd extension && node --test test/*.test.js            # 77 pass
+python -m pytest -q                                   # 642 passed (QA rounds 1-3 merged, QA-09 fixed)
+cd extension && node --test test/*.test.js            # 79 pass
 cd app/adapters/spectrum && npm ci && npm test        # 38 pass
 ```
 
@@ -48,7 +48,7 @@ This machine has no project `.venv`; the tech lead used a scratch venv. Create o
 
 ## Remaining before Sunday 10:00 AM PDT final
 
-- Merge QA round 3, record LIVE-01 and PH-04 results.
+- Record LIVE-01 and PH-04 results.
 - Manual extension checks listed in `extension/README.md` (drag/keyboard, reduced motion, navigation mid-request).
 - Update README/NEXT_STEPS status, then push to GitHub **only when the human says so**, verify the public repo has no secrets.
 - Human-only: Devpost draft (was due Sat 10:30 PM), video, final submission by 9:15 AM target.

@@ -88,3 +88,8 @@ This file begins as a test plan. Append actual commit, command, output and IDs c
 - `cd extension && node --test test/*.test.js` => 52 passed (re-run by the tech lead). Offline backend smoke (`extension/scripts/backend-smoke.mjs`): valid token 200, missing/wrong token 401, unlisted origin 403, 429 after five requests. Headless Chrome render check of idle/searching/finished/panel/hostile/error states (scratch harness, not committed).
 - Automated: EXT-01 (manifest/injection), EXT-02, EXT-03, EXT-04, EXT-05, EXT-07. Partial: EXT-06 (drag/keyboard movement not exercised).
 - Pending manual: unpacked install, service worker lifecycle over a long request, drag/keyboard, reduced motion on a real OS setting, phone-width layout. LIVE-01 pending.
+
+### 2026-10-17, QA rounds 1-3 and fixes
+
+- QA added traceability and adversarial tests (`tests/test_qa_*.py`, `extension/test/qa-*.test.js`, `app/adapters/spectrum/src/qa-*.test.mjs`); nine findings QA-01..09 fixed; human decisions Q1-Q8 recorded in `docs/QA_REPORT.md`. PROM-07 stale terms deferred.
+- Final suites: 642 Python passed, 79 extension, 38 Spectrum, 0 xfail/todo. G1-G3 automated; G4 manual browser checks and G5 live runs pending.

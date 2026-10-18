@@ -266,3 +266,7 @@ Covered by automated tests across the three suites: AGENTS hard limits (no authe
 1. QA-09 is open. It is low severity because the current pipeline cannot produce grounded adverse evidence, and the fix is one line.
 2. Release gates G4 (actual browser inspection, EXT-06) and G5 (authorized live extension and iMessage runs) are not done. They are required before claiming those behaviors in the submission.
 3. SMS, hosting and the FastAPI Photon callback remain unverified by design.
+
+### QA-09 resolution
+
+Fixed by the tech lead on `main`: `app/decision/rules.py` counts adverse sources by `registrable_domain()`, so subdomains of one site are one source. The strict xfail in `tests/test_qa_round3.py` was removed. Suites: 642 Python passed, 79 extension, 38 Spectrum, 0 xfail/todo. Remaining caveats: G4 manual browser checks, G5 live runs (LIVE-01, PH-04), SMS/hosting/webhook unverified by design.

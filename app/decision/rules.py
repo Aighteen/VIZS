@@ -82,7 +82,8 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
         authorized = [e for e in grounded if e.finding == "seller_authorized" and e.evidence_type == "official"
                       and e.polarity == "supports" and not _same_site(e.source_url.host, host)]
         adverse = [e for e in grounded if e.finding == "substantial_adverse" and e.evidence_type in {"regulatory", "investigation"} and e.polarity == "supports"]
-        adverse_hosts = {e.source_url.host.lower().removeprefix("www.") for e in adverse}
+        # Independence is per registrable domain: two subdomains of one site are one source (QA-09).
+        adverse_hosts = {registrable_domain(e.source_url.host) for e in adverse}
         contradiction = any(e.polarity == "contradicts" for e in relevant) or bool(authorized and adverse)
         if contradiction:
             summary = "Seller evidence conflicts. Verify independently before buying."

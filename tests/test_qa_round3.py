@@ -67,7 +67,6 @@ def test_Q6_independent_domains_are_not_collapsed_into_the_seller(listing, url):
     assert decide_for(listing, official(url, listing)).seller_risk == Risk.LOWER_RISK
 
 
-@pytest.mark.xfail(strict=True, reason="QA-09: two adverse findings from subdomains of one registrable domain count as 'independent' for HIGHER_RISK")
 def test_RISK_03_adverse_findings_from_one_registrable_domain_are_not_independent():
     one = evidence(source_url="https://a.regulator-synthetic.gov/action/1", evidence_type="regulatory")
     two = evidence(source_url="https://b.regulator-synthetic.gov/action/2", evidence_type="investigation")
