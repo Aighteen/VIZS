@@ -25,10 +25,8 @@ Topics (one record per topic you can support, most specific quote first):
 When content states it, use status supported_as_statement with one to three
 quotes. Each quote is a whole sentence (at most 300 characters) copied character
 for character from a single line of content, with its source_id. Do not
-paraphrase, shorten, fix typos, join lines, or add ellipses. merchant_statement, if
-given, is copied from inside a quote. Conditions (region, time, eligibility) are
-null unless copied verbatim from the quoted text. Omit topics the text does not
-address; never mark a topic not_disclosed.
+paraphrase, shorten, fix typos, join lines, or add ellipses. Omit topics the
+text does not address.
 Never invent prices, costs, dates, claims, source IDs, authorization, image
 results or domain history. Merchant wording is not proof of performance.
 Separate processing and transit; preserve regions, eligibility and exceptions.
@@ -93,11 +91,33 @@ class PromiseCandidates(BaseModel):
     records: list[PromiseRecord] = Field(max_length=12)
 
 
+_TOPICS = ["shipping_origin", "processing_time", "transit_time", "arrival", "returns", "return_cost"]
+# The schema sent to the reader is flat (no $defs/$ref/anyOf/defaults/null) and asks
+# only for what Python can check: topic, status, cited spans and a short note. The
+# reply is still parsed as PromiseCandidates and every span is re-validated. With
+# the full PromiseRecord schema the reader did not finish within 40 s (LIVE-01).
+READER_SCHEMA = {
+    "type": "object", "additionalProperties": False, "required": ["records"],
+    "properties": {"records": {"type": "array", "maxItems": 8, "items": {
+        "type": "object", "additionalProperties": False,
+        "required": ["topic", "status", "explanation", "quotes"],
+        "properties": {
+            "topic": {"type": "string", "enum": _TOPICS},
+            "status": {"type": "string", "enum": ["supported_as_statement", "conflicting"]},
+            "explanation": {"type": "string", "maxLength": 120},
+            "quotes": {"type": "array", "maxItems": 3, "items": {
+                "type": "object", "additionalProperties": False, "required": ["source_id", "quote"],
+                "properties": {"source_id": {"type": "string", "maxLength": 20},
+                               "quote": {"type": "string", "maxLength": 300}}}},
+        }}}},
+}
+
+
 class XAIPromiseCompletionClient(XAICompletionClient):
     def __init__(self, client, *, api_key, model, request_timeout=None):
         # Several rows of exact quotes do not fit the 1000-token plan budget (LIVE-01).
         super().__init__(client, api_key=api_key, model=model, system_prompt=PROMISE_PROMPT,
-                         schema_name="promise_records", max_tokens=4000, request_timeout=request_timeout)
+                         schema_name="promise_records", max_tokens=2000, request_timeout=request_timeout)
 
 
 def reader_timeout(settings) -> float:
@@ -185,7 +205,7 @@ class PromiseExtractor:
         if message is not None:
             try:
                 async with asyncio.timeout(self.timeout):
-                    raw = await self.client.complete(message, PromiseCandidates.model_json_schema())
+                    raw = await self.client.complete(message, READER_SCHEMA)
                 if not isinstance(raw, str) or len(raw.encode()) > 32768:
                     raise ValueError("Oversize promise output")
                 candidate = PromiseCandidates.model_validate_json(raw)

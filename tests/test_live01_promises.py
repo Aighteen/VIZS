@@ -126,7 +126,7 @@ def test_truncated_grok_reply_gives_cut_off_diagnostic():
             return await PromiseExtractor(reader, data_mode="mock").extract(plan, [source], collection=collection)
 
     sheet = run(go())
-    assert len(bodies) == 1 and bodies[0]["max_tokens"] == 4000
+    assert len(bodies) == 1 and bodies[0]["max_tokens"] == 2000
     notes = explanations(sheet)
     assert len(notes) == 5
     assert all("page extract returned 1 of 3 pages; promise reader output was cut off." in n for n in notes)
@@ -254,3 +254,20 @@ def test_promise_request_uses_its_own_bounded_timeout():
     assert run(go()) == '{"records": []}' and timeouts == [37]
     with pytest.raises(ValueError):
         XAIPromiseCompletionClient(httpx.AsyncClient(), api_key="k", model="m", request_timeout=0)
+
+
+def test_reader_schema_is_flat_and_its_replies_parse_as_candidates():
+    from app.research.promise_extractor import READER_SCHEMA, PromiseCandidates
+    text = json.dumps(READER_SCHEMA)
+    assert all(k not in text for k in ("$ref", "$defs", "anyOf", "default", '"null"'))
+
+    def required_everywhere(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object":
+                assert set(node["required"]) == set(node["properties"]) and node["additionalProperties"] is False
+            for value in node.values():
+                required_everywhere(value)
+    required_everywhere(READER_SCHEMA)
+    reply = {"records": [{"topic": "returns", "status": "supported_as_statement", "explanation": "x",
+                          "quotes": [{"source_id": "source_1", "quote": "Returns within 30 days."}]}]}
+    assert PromiseCandidates.model_validate(reply).records[0].topic == "returns"
