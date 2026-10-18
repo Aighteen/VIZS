@@ -195,6 +195,37 @@ def classify_excerpt(excerpt: str, listing_host: str) -> str:
     return verdict
 
 
+# Reference-page lead sentence ("**Allbirds** is an American footwear brand ..."):
+# the organization that the infobox website belongs to must be described as a
+# brand or maker, and not as a retailer. Otherwise a multi-brand retailer's own
+# site (live false positive 2026-10-17: a beauty retailer's Wikipedia infobox
+# names its own domain) would read as the product brand's store. Strict: brands
+# that describe themselves as retailers of their own goods are missed.
+_LEAD_LINE = re.compile(r"^[ \t]*\*\*[^*\n]{1,120}\*\*", re.MULTILINE)
+_MD_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+_BRAND_WORDS = re.compile(r"\b(?:brand|manufacturer|maker|label|fashion\s+house|perfume\s+house|perfumery|"
+                          r"perfumer|designer|producer)\b", re.IGNORECASE)
+_RETAIL_WORDS = re.compile(r"\bretail|\bdepartment\s+stores?\b|\bchain\b|\bmarketplace|\be-?commerce\b"
+                           r"|\bresell|\bdistribut|\bstockist|\bmulti-?brand|\bsupermarket|\bdrugstore|\bpharmac"
+                           r"|\boutlet|\bwholesal|\bonline\s+(?:shop|store)\b|\bshopping\b|\bdealer|\bstores\s+selling"
+                           r"|\bconglomerate|\bholding\s+company|\bplatform\b",
+                           re.IGNORECASE)
+
+
+def lead_describes_brand(excerpt: str) -> bool:
+    """True when the excerpt contains a reference-page lead sentence that calls
+    the subject a brand or maker and uses no retailer/marketplace wording."""
+    match = _LEAD_LINE.search(excerpt or "")
+    if not match:
+        return False
+    line = excerpt[match.start():].split("\n", 1)[0]
+    plain = _MD_LINK.sub(r"\1", line).replace("**", "")
+    if not re.search(r"\b(?:is|was|are)\b", plain):
+        return False
+    sentence = re.split(r"(?<=[.!?])\s+(?=[A-Z])", plain, maxsplit=1)[0]
+    return bool(_BRAND_WORDS.search(sentence)) and not _RETAIL_WORDS.search(sentence)
+
+
 def _same_name(brand_key: str, listing_name: str) -> bool:
     """User-stated brand vs the site's name: containment or a shared 4+ char prefix.
 
@@ -230,6 +261,8 @@ def assess(listing_host: str, evidence: list[Evidence], brand: str | None = None
             continue
         verdict = classify_excerpt(record.excerpt, host)
         source_site = _site(record.source_url.host)
+        if verdict == "supports" and source_site in REFERENCE_SOURCES and not lead_describes_brand(record.excerpt):
+            continue  # a reference source counts only with a brand (not retailer) lead in the same span
         if verdict == "supports":
             support.setdefault(source_site, record)
         elif verdict == "conflicts":

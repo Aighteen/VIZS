@@ -5,6 +5,7 @@ No retries, redirects, raw page fetches, or generated-answer consumption.
 """
 import asyncio
 import json
+import re
 from datetime import datetime, timezone
 
 import httpx
@@ -40,15 +41,23 @@ class TavilyProvider:
     async def search(self, query: str) -> list[SourceRecord]:
         return (await self.search_with_status(query)).records
 
-    async def search_with_status(self, query: str) -> SearchResponse:
+    async def search_with_status(self, query: str, *, include_domains: tuple[str, ...] = ()) -> SearchResponse:
+        """include_domains: optional fixed domain filter (Tavily Search "include_domains")."""
         if not self.api_key:
             raise ResearchUnavailable("Research provider not configured")
         if not isinstance(query, str) or not query.strip() or len(query) > 400:
             raise ResearchUnavailable("Invalid research query")
+        if not isinstance(include_domains, tuple) or len(include_domains) > 3 or not all(
+                isinstance(d, str) and re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", d) for d in include_domains):
+            raise ResearchUnavailable("Invalid research domain filter")
+        body = {"query": query, "search_depth": "basic", "max_results": self.max_results, "include_answer": False,
+                "include_raw_content": False, "include_images": False, "auto_parameters": False}
+        if include_domains:
+            body["include_domains"] = list(include_domains)
         try:
             async with asyncio.timeout(self.timeout):
                 async with httpx.AsyncClient(transport=self.transport, timeout=self.timeout, follow_redirects=False, trust_env=False) as client:
-                    async with client.stream("POST", "https://api.tavily.com/search", headers={"Authorization": f"Bearer {self.api_key}"}, json={"query": query, "search_depth": "basic", "max_results": self.max_results, "include_answer": False, "include_raw_content": False, "include_images": False, "auto_parameters": False}) as response:
+                    async with client.stream("POST", "https://api.tavily.com/search", headers={"Authorization": f"Bearer {self.api_key}"}, json=body) as response:
                         if response.status_code != 200:
                             raise ResearchUnavailable("Research provider rejected request")
                         chunks = bytearray()

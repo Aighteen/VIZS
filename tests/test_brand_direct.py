@@ -1,5 +1,6 @@
 """Brand-direct rule (lane C): offline adversarial tests, synthetic excerpts only."""
 import asyncio
+import re
 from datetime import datetime, timezone
 
 import pytest
@@ -24,7 +25,15 @@ def host_of(url):
     return urlsplit(url).hostname.removeprefix("www.")
 
 
-def identity(source, excerpt, listing=BRAND_URL, **change):
+# Reference-source excerpts are page spans that include the article lead
+# (see test_reference_page_*). Synthetic reference excerpts get a brand lead by
+# default so each negative below fails for its own reason, not a missing lead.
+BRAND_LEAD = "**Le Labo** is a perfumery brand founded in New York in 2006.\n"
+
+
+def identity(source, excerpt, listing=BRAND_URL, lead=BRAND_LEAD, **change):
+    if lead and brand_direct.is_reference(host_of(source)):
+        excerpt = lead + excerpt
     data = dict(claim="Unverified search excerpt about the site's official status: " + excerpt,
                 source_url=source, excerpt=excerpt, retrieved_at=NOW, seller_domain=host_of(listing),
                 evidence_type="search_snippet", claim_status="unknown", finding="seller_identity",
@@ -43,8 +52,11 @@ def run(listing, sources, brand=None, extra=()):
 
 
 def assert_brand_direct(assessment, sms):
-    assert assessment.decision == "VERIFY_FIRST" and assessment.seller_risk == "INSUFFICIENT_EVIDENCE"
-    assert assessment.summary.startswith("Brand's own store: 2 independent sources")
+    # Human decision 2026-10-17: brand-direct is LOWER_RISK / CONSIDER_BUYING.
+    assert assessment.decision == "CONSIDER_BUYING" and assessment.seller_risk == "LOWER_RISK"
+    assert assessment.summary.startswith("Brand's own store: per 1 reference source")
+    assert "INSUFFICIENT_EVIDENCE" not in sms and sms.startswith("[PARTIAL DATA] LOWER_RISK: Brand's own store")
+    assert "Check return terms before buying." in sms
     assert "verify authorization" not in sms.lower() and "authorization unconfirmed" not in sms.lower()
     assert "Brand's own store" in sms and "Product authenticity is not established." in sms
     assert "Product authenticity is not established." in assessment.missing_information
@@ -65,16 +77,17 @@ def test_brand_store_named_official_by_two_independent_sites_is_brand_direct():
     assert_brand_direct(assessment, sms)
     assert "only if the product is that brand's own" in sms
     assert [str(e.source_url) for e in assessment.evidence] == [s for s, _ in GOOD]
-    assert sms.count("Unverified source: ") == 2
+    assert f"Brand-store reference (unverified): {GOOD[0][0]}" in sms
+    assert sms.count("Unverified source: ") == 1 and GOOD[1][0] in sms
     assert "lelabofragrances.com" not in assessment.summary  # policy text names no domain
 
 
 def test_one_curated_reference_source_is_enough_and_counts_once_per_domain():
     assessment, sms = run(BRAND_URL, [GOOD[0]])
-    assert assessment.summary.startswith("Brand's own store: 1 independent source names")
+    assert assessment.summary.startswith("Brand's own store: per 1 reference source, this site")
     assert "verify authorization" not in sms.lower()
     both = [("https://en.wikipedia.org/wiki/Le_Labo", WIKI), ("https://de.wikipedia.org/wiki/Le_Labo", MAG)]
-    assert run(BRAND_URL, both)[0].summary.startswith("Brand's own store: 1 independent source names")
+    assert run(BRAND_URL, both)[0].summary.startswith("Brand's own store: per 1 reference source, this site")
 
 
 def test_user_stated_matching_brand_drops_the_caveat():
@@ -186,10 +199,35 @@ def test_user_named_brand_that_is_not_the_store_blocks_retailer_self_identity():
     sources = [("https://en.wikipedia.org/wiki/Sephora", "Sephora's official website is sephora-synthetic.com."),
                ("https://www.vogue-synthetic.com/x", "Visit the official online store at sephora-synthetic.com.")]
     assert_not_brand_direct(*run(store, sources, brand="Le Labo"))
-    # Brand unknown: the store is its own brand's official site; the reply says
-    # it holds only if the product is that brand's own (documented limitation).
-    assessment, sms = run(store, sources)
-    assert "only if the product is that brand's own" in sms
+
+
+@pytest.mark.parametrize("lead", [
+    # Live false positive 2026-10-17 (shape): a multi-brand beauty retailer whose
+    # Wikipedia infobox names its own domain.
+    "**Bluemercury** is an American luxury beauty products and spa retailer.\n",
+    "**Sephora** is a multinational retailer of personal care and beauty products.\n",
+    "**Nordstrom, Inc.** is an American luxury department store chain.\n",
+    "**Shop Synthetic** is an e-commerce platform for independent brands.\n",
+    "**Perfume Synthetic** is an authorized distributor of designer fragrance brands.\n",
+    "**Synthetic Store** is a company.\n",          # no brand/maker wording at all
+    "Synthetic Store is a perfumery brand.\n",       # not a lead line (no bold subject)
+])
+def test_reference_source_lead_must_describe_a_brand_not_a_retailer(lead):
+    store = "https://www.retail-synthetic.com/products/le-labo-santal-33"
+    reference = identity("https://en.wikipedia.org/wiki/Retail", "| Website | <https://www.retail-synthetic.com> |",
+                         store, lead=lead)
+    other = identity("https://www.vogue-synthetic.com/x", "Shop at the official store retail-synthetic.com.", store)
+    assert_not_brand_direct(*run(store, [], extra=[reference, other]))
+    assert brand_direct.lead_describes_brand(lead + "| Website | x |") is False
+
+
+def test_brand_lead_with_infobox_row_is_brand_direct():
+    reference = identity("https://en.wikipedia.org/wiki/Allbirds", "| Website | [allbirds.com](http://allbirds.com) |",
+                         "https://www.allbirds.com/products/x",
+                         lead="**Allbirds** is an American [footwear](https://en.wikipedia.org/wiki/Footwear) "
+                              "and apparel brand that was co-founded in 2015.\n")
+    assessment, sms = run("https://www.allbirds.com/products/x", [], extra=[reference])
+    assert assessment.seller_risk == "LOWER_RISK" and sms.startswith("[PARTIAL DATA] LOWER_RISK: Brand's own store")
 
 
 # ------------------------------------------------------------------ precedence
@@ -211,6 +249,16 @@ def test_official_authorization_still_gives_lower_risk_first():
                         polarity="supports")
     assessment, _ = run(BRAND_URL, GOOD, extra=[official])
     assert assessment.decision == "CONSIDER_BUYING"
+    assert assessment.summary.startswith("Official seller authorization") and assessment.evidence == [official]
+
+
+@pytest.mark.parametrize("kind", ["regulatory", "investigation"])
+def test_a_single_adverse_finding_blocks_brand_direct_lower_risk(kind):
+    adverse = identity("https://regulator-synthetic.gov/a", "x", finding="substantial_adverse", evidence_type=kind,
+                       claim_status="verified_fact", polarity="supports")
+    assessment, sms = run(BRAND_URL, GOOD, extra=[adverse])
+    assert assessment.seller_risk != "LOWER_RISK" and assessment.decision == "VERIFY_FIRST"
+    assert not assessment.summary.startswith("Brand's own store")
 
 
 # ------------------------------------------------------------------ research layer
@@ -219,9 +267,13 @@ class FakeProvider:
     def __init__(self, records):
         self.records, self.queries = records, []
 
-    async def search_with_status(self, query):
+    async def search_with_status(self, query, include_domains=()):
         self.queries.append(query)
-        return SearchResponse(self.records, len(self.records))
+        self.filters = getattr(self, "filters", []) + [include_domains]
+        records = self.wiki_records if include_domains else self.records
+        return SearchResponse(records, len(records))
+
+    wiki_records = []
 
 
 def plan_for(url, brand=None):
@@ -365,7 +417,7 @@ def test_C8_user_text_and_plan_brand_never_create_the_mapping():
     provider = FakeProvider([])
     asyncio.run(SellerResearch(provider).brand_direct_with_status(
         plan_for(listing, brand="lelabofragrances.com official")))
-    assert provider.queries == ['"lelabo-outlet-sale.com" official website']
+    assert set(provider.queries) == {'"lelabo-outlet-sale.com" official website'}  # incl. Wikipedia fallback
 
 
 def test_C9_other_brand_on_the_real_domain_gets_no_brand_direct_wording():
@@ -407,7 +459,9 @@ def test_C15_reference_registry_is_immutable_and_plain_ascii():
 
 WIKI_PAGE = ("# Le Labo\n\n| Type | Subsidiary |\n| Industry | Consumer goods |\n"
              "| Parent | Estée Lauder Companies |\n| Website | <https://www.lelabofragrances.com> |\n\n"
-             "Le Labo is a perfumery brand.\n")
+             "**Le Labo** (French: the lab) is a slow perfumery brand born in Grasse, France.\n\n## History\n")
+RETAILER_PAGE = WIKI_PAGE.replace("is a slow perfumery brand born in Grasse, France",
+                                  "is an American luxury beauty products and spa retailer")
 
 
 class ExtractingProvider(FakeProvider):
@@ -433,13 +487,16 @@ def brand_research(listing, records, pages):
 def test_reference_page_infobox_row_confirms_the_exact_domain():
     provider, result = brand_research(BRAND_URL, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
     assert provider.extracted == [([WIKI_URL], True, "reference_page")]
-    assert [e.excerpt for e in result.evidence] == ["| Website | <https://www.lelabofragrances.com> |"]
+    assert [e.excerpt for e in result.evidence] == [
+        "| Website | <https://www.lelabofragrances.com> |\n\n"
+        "**Le Labo** (French: the lab) is a slow perfumery brand born in Grasse, France."]
     assert result.evidence[0].excerpt in WIKI_PAGE  # exact span of retrieved text
     report = result.report()
     assert report.records_retained == 1 and report.records_received == 1
     assessment, sms = run(BRAND_URL, [], extra=result.evidence)
-    assert assessment.summary.startswith("Brand's own store: 1 independent source names")
-    assert "verify authorization" not in sms.lower() and f"Unverified source: {WIKI_URL}" in sms
+    assert assessment.summary.startswith("Brand's own store: per 1 reference source, this site")
+    assert assessment.seller_risk == "LOWER_RISK" and assessment.decision == "CONSIDER_BUYING"
+    assert "verify authorization" not in sms.lower() and f"Brand-store reference (unverified): {WIKI_URL}" in sms
 
 
 @pytest.mark.parametrize("listing", ["https://lelabo-outlet-sale.com/x", "https://lelabofragrances.co/x",
@@ -448,6 +505,18 @@ def test_reference_page_naming_the_real_domain_does_not_help_lookalikes(listing)
     _, result = brand_research(listing, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
     assert result.evidence == []
     assert_not_brand_direct(*run(listing, [], extra=result.evidence))
+
+
+def test_reference_page_of_a_retailer_gives_no_support():
+    provider, result = brand_research(BRAND_URL, [NEUTRAL_WIKI], {WIKI_URL: RETAILER_PAGE})
+    assert provider.extracted and result.evidence == []
+    assert_not_brand_direct(*run(BRAND_URL, [], extra=result.evidence))
+
+
+def test_reference_snippet_alone_is_not_enough_the_page_lead_is_needed():
+    # A reference snippet that supports but has no lead (the page could not be read).
+    snippet = identity(WIKI_URL, "Its official website is lelabofragrances.com.", lead=None)
+    assert_not_brand_direct(*run(BRAND_URL, [], extra=[snippet]))
 
 
 def test_reference_extract_only_for_curated_hosts_and_never_the_seller():
@@ -462,3 +531,109 @@ def test_reference_extract_only_for_curated_hosts_and_never_the_seller():
                                  "| Website | not lelabofragrances.com |"])
 def test_website_rows_need_the_exact_key_in_the_website_field(row):
     assert brand_direct.classify_excerpt(row, "www.lelabofragrances.com") == "neutral"
+
+
+# ------------------------------------------------------------------ Wikipedia-only fallback search
+
+LOOKALIKE_WIKI_RESULT = SourceRecord("https://lelabo-outlet-sale.com/wiki", "", "Le Labo outlet", NOW)
+
+
+def fallback_research(listing, first, wiki, pages):
+    provider = ExtractingProvider(first, pages)
+    provider.wiki_records = wiki
+    return provider, asyncio.run(SellerResearch(provider).brand_direct_with_status(plan_for(listing)))
+
+
+def test_fallback_runs_only_without_a_reference_result_and_uses_the_fixed_query():
+    first = [SourceRecord("https://www.vogue-synthetic.com/x", "", "Le Labo review", NOW)]
+    provider, result = fallback_research(BRAND_URL, first, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert provider.queries == ['"lelabofragrances.com" official website'] * 2
+    assert provider.filters == [(), ("wikipedia.org",)]
+    assert provider.extracted == [([WIKI_URL], True, "reference_page")]
+    assessment, sms = run(BRAND_URL, [], extra=result.evidence)
+    assert assessment.seller_risk == "LOWER_RISK"
+    report = result.report()
+    assert report.records_received == report.records_retained + report.records_filtered
+    # A reference result in the first search: no fallback call.
+    provider, _ = fallback_research(BRAND_URL, [NEUTRAL_WIKI], [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert provider.filters == [()]
+
+
+def test_fallback_results_need_a_reference_host_and_the_same_checks():
+    # Non-Wikipedia hosts in the fallback answer are ignored (the filter is not trusted).
+    provider, result = fallback_research(BRAND_URL, [], [LOOKALIKE_WIKI_RESULT], {})
+    assert provider.extracted == [] and result.evidence == []
+    # A retailer lead on the fallback page gives nothing.
+    _, result = fallback_research(BRAND_URL, [], [NEUTRAL_WIKI], {WIKI_URL: RETAILER_PAGE})
+    assert result.evidence == []
+
+
+@pytest.mark.parametrize("listing", ["https://lelabo-outlet-sale.com/x", "https://lelabofragrances.co/x",
+                                     "https://www.lelabofragrances.com.au/x", "https://bluemercury.com/products/x"])
+def test_fallback_wikipedia_page_never_helps_lookalikes_or_retailers(listing):
+    _, result = fallback_research(listing, [], [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert result.evidence == []
+    assert_not_brand_direct(*run(listing, [], extra=result.evidence))
+
+
+def test_fallback_failure_is_silent_and_conservative():
+    class Failing(ExtractingProvider):
+        async def search_with_status(self, query, include_domains=()):
+            if include_domains:
+                from app.research.provider import ResearchUnavailable
+                raise ResearchUnavailable("down")
+            return await super().search_with_status(query)
+    provider = Failing([], {})
+    result = asyncio.run(SellerResearch(provider).brand_direct_with_status(plan_for(BRAND_URL)))
+    assert result.evidence == [] and result.status == "empty"
+
+
+def test_tavily_search_sends_include_domains_only_when_given_and_validates_it():
+    import httpx, json as _json
+    from app.research.provider import ResearchUnavailable
+    from app.services.tavily import TavilyProvider
+    bodies = []
+
+    def handler(request):
+        bodies.append(_json.loads(request.content))
+        return httpx.Response(200, json={"results": []})
+    provider = TavilyProvider("fixture", transport=httpx.MockTransport(handler))
+    asyncio.run(provider.search_with_status("q"))
+    asyncio.run(provider.search_with_status("q", include_domains=("wikipedia.org",)))
+    assert "include_domains" not in bodies[0] and bodies[1]["include_domains"] == ["wikipedia.org"]
+    for bad in (["wikipedia.org"], ("https://evil.example",), ("a.org", "b.org", "c.org", "d.org"), ("",)):
+        with pytest.raises(ResearchUnavailable):
+            asyncio.run(provider.search_with_status("q", include_domains=bad))
+
+
+# ------------------------------------------------------------------ reply citation slot
+
+def brand_sheet(n_rows=5, quote_len=160):
+    from app.models import PromiseSheet
+    sources = [{"source_id": f"s{i}", "url": f"https://www.lelabofragrances.com/policy-{i}.html",
+                "retrieved_at": NOW.isoformat(), "content": "x" * quote_len, "content_kind": "merchant_page",
+                "seller_domain": "lelabofragrances.com"} for i in range(3)]
+    topics = ["return_cost", "returns", "shipping_origin", "processing_time", "transit_time"][:n_rows]
+    records = [{"topic": t, "status": "supported_as_statement", "merchant_statement": "x" * quote_len,
+                "explanation": "Merchant statement.", "quotes": [{"source_id": f"s{i % 3}", "quote": "x" * quote_len}]}
+               for i, t in enumerate(topics)]
+    return PromiseSheet.model_validate({"seller_domain": "lelabofragrances.com", "sources": sources, "records": records})
+
+
+@pytest.mark.parametrize("rows,quote_len", [(1, 40), (5, 40), (5, 160), (5, 400)])
+def test_brand_direct_reply_always_keeps_its_reference_link(rows, quote_len):
+    assessment, _ = run(BRAND_URL, GOOD)
+    assessment = assessment.model_copy(update={"promise_sheet": brand_sheet(rows, quote_len)})
+    sms = format_sms(assessment)
+    assert f"Brand-store reference (unverified): {GOOD[0][0]}" in sms
+    assert len(sms) <= 1000
+    links = re.findall(r"https?://\S+", sms)
+    assert len(set(links)) <= 2
+    assert sms.index("Brand-store reference") < (sms.index("Merchant statement") if "Merchant statement" in sms else len(sms))
+
+
+def test_non_brand_direct_replies_keep_previous_link_rules():
+    assessment, _ = run("https://lelabo-outlet-sale.com/x", GOOD)
+    sheet = brand_sheet(5, 40).model_copy(update={"seller_domain": "lelabo-outlet-sale.com"})
+    sms = format_sms(assessment.model_copy(update={"promise_sheet": sheet}))
+    assert "Brand-store reference" not in sms and "Verify authorization" in sms
