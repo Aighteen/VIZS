@@ -1,6 +1,6 @@
 # Current scope: Photon messaging and a browser extension with an animated pet
 
-Approved direction: the user wants both Photon messaging and a Chrome extension with an animated on-page pet that shows when research is running. Both channels are core scope and share the existing assessment backend. Status at `62f1ac8`: the backend extension route, pairing and request budget are implemented and tested; the extension UI itself is not in the repository. Adding the extension does not replace or downgrade Photon.
+Approved direction: the user wants both Photon messaging and a Chrome extension with an animated on-page pet that shows when research is running. Both channels are core scope and share the existing assessment backend. Status at `3da454c`: the backend extension route, pairing and request budget, and the MV3 extension in `extension/` are implemented and offline-tested. Manual Chrome install checks and a live run are pending. Adding the extension does not replace or downgrade Photon.
 
 ## Product and first release
 
@@ -24,7 +24,7 @@ A registered user sends a fragrance listing URL and optional price through Photo
 
 P0 includes a reproducible Photon launch/stop flow and verified inbound/reply behavior alongside the extension UI. Existing proof is iMessage; do not call it SMS. Public hosting, a persistent listener and a verified FastAPI callback remain unfinished. Shared assessment logic is required; cross-channel account linking, history synchronization and automatic forwarding between channels are not required.
 
-## P0 acceptance criteria for both channels (extension UI pending)
+## P0 acceptance criteria for both channels
 
 - Chrome extension loads locally; user activation shows a small movable/dismissible pet on the current shopping page. No automatic research on navigation.
 - Check seller captures the active listing URL; optional price is editable/confirmed. Do not scrape the entire page, payment forms or account details.

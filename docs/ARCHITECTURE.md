@@ -23,7 +23,7 @@ Second core channel (existing bounded implementation):
                    <- [formatted cited reply]
 ```
 
-Photon messaging and the extension are both core channels sharing one workflow and risk policy. The extension route and local pairing are implemented; the extension UI and any public access configuration are not. See EXTENSION_SCOPE.md. The existing API returns a final result with no stage events: animate Searching until completion; do not fabricate a source-review stage. Runtime remains one Python service/orchestrator. Provider keys never enter extension code. Existing debug-only channel contracts remain until A/D agree any client boundary changes.
+Photon messaging and the extension are both core channels sharing one workflow and risk policy. The extension route, local pairing and the MV3 extension (`extension/`) are implemented; public access configuration is not. See EXTENSION_SCOPE.md. The existing API returns a final result with no stage events: animate Searching until completion; do not fabricate a source-review stage. Runtime remains one Python service/orchestrator. Provider keys never enter extension code. Existing debug-only channel contracts remain until A/D agree any client boundary changes.
 
 
 `*` For very short MVP processing, a FastAPI `BackgroundTasks`-style job can keep webhook acknowledgement fast, **but does not survive process restarts**. If losing jobs is unacceptable, use a real queue or durable state. Do not pretend the in-process prototype is production reliable.

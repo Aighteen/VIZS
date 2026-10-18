@@ -10,12 +10,12 @@
 | Backend workflow | Implemented: Grok extraction, Tavily research, URL safety, deterministic risk policy, research status counts, labeled unverified links |
 | Promise sheet | Implemented: bounded Tavily Extract of up to 3 seller pages, Grok promise extraction, Python quote-span validation, shipping/arrival/returns rows, `.com`/`.net` RDAP registration context; image checks always report unavailable |
 | Extension backend boundary | Implemented: `POST /api/v1/extension/evaluate` with pairing token, origin allowlist and request budget |
-| Chrome extension / pet UI | **Not in this repository** (no `extension/` directory on `main` or any pushed branch) |
+| Chrome extension / pet UI | Implemented in `extension/` (MV3, user-triggered, offline-tested: 52 Node tests, real offline backend smoke, headless Chrome render check). Manual install check and live run pending |
 | Photon iMessage | One registered-phone round trip confirmed by the user (Grok, Tavily 5 returned / 2 retained, VERIFY_FIRST, cited reply). Bounded test bridge, now started and stopped by `npm run shop` (PH-03, offline check passed on macOS). Live re-run pending |
 | SMS, FastAPI Photon webhook, hosting | Not verified; `/webhooks/photon` is deliberately disabled |
 | Tests | 159 Python tests passed (macOS, Python 3.14, fresh venv, Oct 17). Node bridge tests last recorded 4 passed (Windows); not re-run since |
 
-**Immediate next steps:** save the mandatory Devpost draft (10:30 PM PDT tonight), build the extension, then one authorized live run per channel. See [next steps](docs/NEXT_STEPS.md).
+**Immediate next steps:** save the mandatory Devpost draft (10:30 PM PDT tonight), load and manually check the extension (see `extension/README.md`), then one authorized live run per channel. See [next steps](docs/NEXT_STEPS.md).
 
 ## Run the local API
 

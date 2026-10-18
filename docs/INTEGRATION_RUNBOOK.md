@@ -8,7 +8,7 @@ This is an action plan, not a record of successful API access. Update PASS/BLOCK
 | Grok API | Use approved model and vendor SDK/Responses client; test small structured response | Valid parsed `OrchestratorPlan` | LIVE PASS (registered-phone run); promise extraction mocked only |
 | Research provider | Tavily API key/search request, or xAI supported native web search | Real source record URLs logged without sensitive info | LIVE PASS for Tavily Search (5 returned / 2 retained); Tavily Extract and RDAP mocked only |
 | Photon 2.0 Beta | Confirm beta account access, channel/phone provision, precise callback auth/send docs | Visible inbound message and accepted outbound SMS | iMessage via Spectrum SDK: PASS (user-confirmed reply). SMS and FastAPI callback: UNTESTED |
-| Extension route | `dev_server --pair`, then POST `/api/v1/extension/evaluate` with the token | 401/403/429 before provider work; assessment returned with token | OFFLINE PASS (tests/test_api.py); no extension client exists yet |
+| Extension route | `dev_server --pair`, then POST `/api/v1/extension/evaluate` with the token | 401/403/429 before provider work; assessment returned with token | OFFLINE PASS (tests/test_api.py; extension `scripts/backend-smoke.mjs` 200/401/403, 429 after 5 requests) |
 | Photon launcher | Committed launch/stop for API plus bridge | One listener, clean stop | NOT BUILT |
 | Deployment | Public HTTPS webhook URL reachable, env vars configured securely | Real callback reached remote service | UNTESTED |
 | End-to-end | Send test SMS, inspect trace ID, receive reply | Real inbound/outbound proof and no duplicate SMS | iMessage bounded test PASS; extension end to end UNTESTED |
