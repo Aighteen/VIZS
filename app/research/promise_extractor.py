@@ -30,10 +30,19 @@ class PromiseCandidates(BaseModel):
 
 
 class XAIPromiseCompletionClient(XAICompletionClient):
-    def __init__(self, client, *, api_key, model):
+    def __init__(self, client, *, api_key, model, request_timeout=None):
         # Several rows of exact quotes do not fit the 1000-token plan budget (LIVE-01).
         super().__init__(client, api_key=api_key, model=model, system_prompt=PROMISE_PROMPT,
-                         schema_name="promise_records", max_tokens=4000)
+                         schema_name="promise_records", max_tokens=4000, request_timeout=request_timeout)
+
+
+def reader_timeout(settings) -> float:
+    """Reader bound that fits the evaluation budget after worst-case earlier stages.
+
+    Earlier stages are bounded by the plan call (grok timeout), seller research (10 s)
+    and policy extract (15 s); 5 s is kept as margin. A 20 s bound timed out live (LIVE-01).
+    """
+    return max(5.0, min(40.0, settings.evaluation_timeout_seconds - settings.grok_timeout_seconds - 30))
 
 
 # Privacy-safe stage notes: fixed wording and counts only, never URLs or page text.

@@ -13,7 +13,7 @@ from app.services.grok import GrokExtractor, XAICompletionClient
 from app.services.tavily import TavilyProvider
 from app.research.domain import DomainLookup
 from app.research.promises import collect_promise_sources
-from app.research.promise_extractor import PromiseExtractor, XAIPromiseCompletionClient
+from app.research.promise_extractor import PromiseExtractor, XAIPromiseCompletionClient, reader_timeout
 from app.workflow.service import Contracts, EvaluationWorkflow
 
 
@@ -32,7 +32,10 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
         provider = TavilyProvider(settings.tavily_api_key if live else None, transport=tavily_transport,
                                   extract_timeout=14)
         research = SellerResearch(provider, destination_validator=destination_validator)
-        promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model)
+        promise_timeout = reader_timeout(settings)
+        # Dedicated request bound: the shared client's read timeout is the plan's.
+        promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model,
+                                                     request_timeout=promise_timeout)
                           if completion is not None else None)
 
         async def resolve_promises(plan, records):
@@ -43,7 +46,7 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
                                                        destination_validator=destination_validator)
             policy_records = collected.records + records
             usable_page = any(record.content_kind == "merchant_page" for record in collected.records)
-            extractor = PromiseExtractor(promise_client if usable_page else None, timeout_seconds=20)
+            extractor = PromiseExtractor(promise_client if usable_page else None, timeout_seconds=promise_timeout)
             # Independent context lookup never expands its fixed .com/.net registry allowlist.
             sheet, domain = await asyncio.gather(
                 extractor.extract(plan, policy_records, collection=collected),

@@ -271,3 +271,29 @@ def test_quote_stitched_across_windows_or_absence_claim_on_trimmed_page_is_dropp
     sheet = run(PromiseExtractor(Reader(reply), data_mode="mock").extract(plan, [source], collection=collection))
     assert all(r.status == "unavailable" for r in sheet.records)
     assert "proposed 2 rows, 0 kept" in sheet.records[0].explanation
+
+
+@pytest.mark.parametrize("evaluation, grok, expected", [(100, 30, 40.0), (100, 60, 10.0), (120, 8, 40.0), (40, 30, 5.0)])
+def test_reader_timeout_fits_evaluation_budget(evaluation, grok, expected):
+    from app.config import Settings
+    from app.research.promise_extractor import reader_timeout
+    settings = Settings(evaluation_timeout_seconds=evaluation, grok_timeout_seconds=grok)
+    assert reader_timeout(settings) == expected
+    assert grok + 10 + 15 + reader_timeout(settings) <= evaluation or expected == 5.0
+
+
+def test_promise_request_uses_its_own_bounded_timeout():
+    timeouts = []
+
+    def handler(request):
+        timeouts.append(request.extensions["timeout"]["read"])
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": '{"records": []}'}}]})
+
+    async def go():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler), timeout=8) as client:
+            reader = XAIPromiseCompletionClient(client, api_key="mock-key", model="explicit-test-model", request_timeout=37)
+            return await reader.complete("{}", {})
+
+    assert run(go()) == '{"records": []}' and timeouts == [37]
+    with pytest.raises(ValueError):
+        XAIPromiseCompletionClient(httpx.AsyncClient(), api_key="k", model="m", request_timeout=0)

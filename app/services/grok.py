@@ -75,17 +75,21 @@ def _error_hint(body: bytes) -> str | None:
 class XAICompletionClient:
     """Explicitly configured transport. Client lifetime belongs to the caller."""
 
-    def __init__(self, client: httpx.AsyncClient, *, api_key: str, model: str, system_prompt: str = SYSTEM_PROMPT, schema_name: str = "shopping_plan", max_tokens: int = 1000):
+    def __init__(self, client: httpx.AsyncClient, *, api_key: str, model: str, system_prompt: str = SYSTEM_PROMPT, schema_name: str = "shopping_plan", max_tokens: int = 1000,
+                 request_timeout: float | None = None):
         if not api_key.strip() or not model.strip():
             raise ValueError("xAI key and model must be explicitly configured")
         if not 1 <= max_tokens <= 6000:
             raise ValueError("max_tokens out of range")
+        if request_timeout is not None and not (math.isfinite(request_timeout) and 0 < request_timeout <= 60):
+            raise ValueError("request_timeout out of range")
         self._client = client
         self._key = api_key
         self._model = model
         self._system_prompt = system_prompt
         self._schema_name = schema_name
         self._max_tokens = max_tokens
+        self._request_timeout = request_timeout
 
     async def complete(self, message: str, schema: dict) -> str:
         # Fixed origin; no user-controlled endpoint, redirects, retries, or tools.
@@ -105,6 +109,7 @@ class XAICompletionClient:
                 "stream": False,
             },
             follow_redirects=False,
+            **({"timeout": self._request_timeout} if self._request_timeout is not None else {}),
         ) as response:
             if response.status_code >= 400:
                 body = bytearray()
