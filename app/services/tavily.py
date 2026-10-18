@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from app.research.provider import ResearchUnavailable, SourceRecord
+from app.research.provider import ResearchUnavailable, SearchResponse, SourceRecord
 from app.research.url_safety import UnsafeURL, public_url
 
 
@@ -23,6 +23,9 @@ class TavilyProvider:
         self.max_results = max_results
 
     async def search(self, query: str) -> list[SourceRecord]:
+        return (await self.search_with_status(query)).records
+
+    async def search_with_status(self, query: str) -> SearchResponse:
         if not self.api_key:
             raise ResearchUnavailable("Research provider not configured")
         if not isinstance(query, str) or not query.strip() or len(query) > 400:
@@ -39,7 +42,9 @@ class TavilyProvider:
                                 raise ResearchUnavailable("Research response too large")
                             chunks.extend(chunk)
                         payload = json.loads(chunks)
-        except (httpx.HTTPError, TimeoutError, ValueError) as exc:
+        except (httpx.TimeoutException, TimeoutError) as exc:
+            raise ResearchUnavailable("Research provider timed out", reason="timeout") from exc
+        except (httpx.HTTPError, ValueError) as exc:
             raise ResearchUnavailable("Research provider unavailable or malformed") from exc
         if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
             raise ResearchUnavailable("Research provider returned invalid records")
@@ -59,4 +64,4 @@ class TavilyProvider:
             seen.add(url)
             title = item.get("title")
             records.append(SourceRecord(url, title[:200] if isinstance(title, str) else "", excerpt, now))
-        return records
+        return SearchResponse(records, min(len(payload["results"]), self.max_results))

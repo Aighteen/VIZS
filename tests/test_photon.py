@@ -38,4 +38,4 @@ def test_local_simulator_uses_workflow_and_dedupes():
 
 def test_mock_requires_explicit_dependencies():
     with pytest.raises(ValueError):
-        create_app(settings=Settings(enable_mock_sms=True))
+        create_app(settings=Settings(enable_mock_sms=True), workflow=fake_workflow())

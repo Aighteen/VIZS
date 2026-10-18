@@ -52,7 +52,7 @@ class Evidence(Contract):
     claim: str = Field(min_length=1, max_length=1000)
     source_url: HttpUrl
     source_title: str | None = Field(default=None, max_length=300)
-    evidence_type: Literal["official", "directory", "regulatory", "investigation", "complaint", "community", "unverified_review"]
+    evidence_type: Literal["official", "directory", "regulatory", "investigation", "complaint", "community", "unverified_review", "search_snippet"]
     claim_status: Literal["verified_fact", "allegation", "inference", "unknown"]
     retrieved_at: AwareDatetime
     excerpt: str | None = Field(default=None, max_length=3000)
@@ -63,12 +63,36 @@ class Evidence(Contract):
     data_mode: Literal["live", "partial", "mock"] = "partial"
 
 
+class ResearchReport(Contract):
+    provider: Literal["tavily"] = "tavily"
+    status: Literal["partial", "empty", "filtered", "unavailable", "timeout", "unsafe_url", "skipped"]
+    provider_called: bool = False
+    records_received: int = Field(default=0, ge=0, le=5)
+    records_retained: int = Field(default=0, ge=0, le=5)
+    records_filtered: int = Field(default=0, ge=0, le=5)
+
+    @model_validator(mode="after")
+    def consistent_counts(self):
+        if self.records_received != self.records_retained + self.records_filtered:
+            raise ValueError("Research counts disagree")
+        if not self.provider_called and self.records_received:
+            raise ValueError("Records require a provider call")
+        if self.status == "partial" and not self.records_retained:
+            raise ValueError("Partial research requires retained records")
+        if self.status == "filtered" and (not self.records_received or self.records_retained):
+            raise ValueError("Filtered research requires only rejected records")
+        if self.status not in {"partial", "filtered"} and self.records_received:
+            raise ValueError("This research status cannot contain records")
+        return self
+
+
 class Assessment(Contract):
     request_id: str = Field(min_length=1, max_length=128)
     seller_risk: Risk
     decision: Decision
     summary: str = Field(min_length=1, max_length=500)
     evidence: list[Evidence] = Field(default_factory=list, max_length=30)
+    research: list[ResearchReport] = Field(default_factory=list, max_length=3)
     missing_information: list[str] = Field(default_factory=list, max_length=10)
     data_mode: Literal["live", "partial", "mock"]
 

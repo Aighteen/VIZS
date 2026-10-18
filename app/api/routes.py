@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/healthz")
 async def health(request: Request):
     return {"status": "ok", "evaluation_ready": request.app.state.workflow is not None,
-            "photon_enabled": False}
+            "photon_enabled": False, "provider_mode": request.app.state.settings.provider_mode}
 
 
 async def limited_body(request: Request):
@@ -29,7 +29,7 @@ async def limited_body(request: Request):
 def workflow_for(request: Request):
     workflow = request.app.state.workflow
     if workflow is None:
-        raise HTTPException(503, "D contracts and B/C/D dependencies are not wired")
+        raise HTTPException(503, "Evaluation workflow is not running")
     return workflow
 
 
@@ -50,6 +50,16 @@ async def evaluate(request: Request):
         raise HTTPException(503, "Evaluation dependency unavailable") from None
     except Exception:
         raise HTTPException(502, "Evaluation dependency failed") from None
+
+
+@router.post("/api/v1/evaluate-message")
+async def evaluate_message(request: Request):
+    """Loopback developer bridge; Photon authentication stays in its SDK."""
+    assessment = await evaluate(request)
+    body = request.app.state.format_sms(assessment)
+    if assessment.decision == "NEED_MORE_INFORMATION" and assessment.summary not in body:
+        body = assessment.summary + " " + body
+    return {"assessment": assessment, "message_text": body}
 
 
 @router.post("/webhooks/photon")

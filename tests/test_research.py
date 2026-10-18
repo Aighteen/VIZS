@@ -108,3 +108,27 @@ def test_research_backend_query_empty_failure_and_contradictions():
     task.kind = "compare_prices"
     assert run(SellerResearch(provider, destination_validator=validator)(plan, task)) == []
     assert provider.calls == 1
+
+
+def test_www_alias_is_relevant_without_relaxing_seller_identity():
+    item=normalize_record(record("Returns accepted", "https://shop.com/returns"),"www.shop.com")
+    assert item is not None and item.seller_domain=="shop.com"
+    assert item.claim_status=="unknown"
+    assert normalize_record(record("Other store", "https://notshop.com/returns"),"www.shop.com") is None
+
+
+def test_missing_input_and_unsafe_destination_skip_provider():
+    from app.research.url_safety import UnsafeURL
+    class Never:
+        async def search(self,query):
+            raise AssertionError("Provider must not run")
+    async def unsafe(url):
+        raise UnsafeURL("private details")
+    research=SellerResearch(Never(),destination_validator=unsafe)
+    plan=SimpleNamespace(product_url="https://shop.com/item",requires_user_input=False)
+    task=SimpleNamespace(kind="verify_seller")
+    result=run(research.research_with_status(plan,task))
+    assert result.report().status=="unsafe_url"
+    assert result.report().provider_called is False
+    plan.requires_user_input=True
+    assert run(research.research_with_status(plan,task)).report().status=="skipped"

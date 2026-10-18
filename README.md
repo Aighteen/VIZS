@@ -1,10 +1,10 @@
-# DubHacks '26 — AI Shopping Assistant Agent Kit (v2)
+# DubHacks '26 â€” AI Shopping Assistant Agent Kit (v2)
 
 **Project:** SMS-first, evidence-backed shopping decision assistant for fragrance purchases.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent.
-**Status:** Packets A-D merged on `feat/packet-a-integration`; 91 offline tests pass. Grok/Tavily adapters exist; default application wiring and live shopping flow remain pending.
-**Current phase:** Runtime wiring and end-to-end validation. See [next steps](docs/NEXT_STEPS.md).
-**Immediate next step:** A wires the merged components into the application with explicit offline/live configuration. Paid API calls still require instruction. Humans finalize tracks.
+**Status:** Packets A-D merged on `feat/packet-a-integration`; 116 offline tests pass. Runtime wiring is implemented locally; default offline mode makes no provider calls. A registered-phone iMessage test completed through Grok and Tavily; the user confirmed receipt of the reply with unverified source links.
+**Current phase:** Offline pipeline assembled; live-provider verification next. See [next steps](docs/NEXT_STEPS.md).
+**Immediate next step:** Verify the configured providers with separately authorized live probes. Paid API calls still require instruction. Humans finalize tracks.
 
 ## Run the local API
 
@@ -16,23 +16,39 @@ py -3.12 -m venv .venv
 .venv/Scripts/python.exe -m uvicorn app.main:app
 ```
 
-`GET /healthz` performs no external calls. The default `POST /api/v1/evaluate`
-returns 503 until the merged contracts and domain components are injected.
+`GET /healthz` performs no external calls and reports assembly readiness plus provider mode; it does not prove provider access. `POST /api/v1/evaluate` now uses the assembled workflow. In default offline mode, a valid request returns a partial assessment explaining unavailable extraction; missing input returns clarification.
 `POST /webhooks/photon` returns a local disabled 503; no vendor acknowledgement,
 authentication, or retry behavior is assumed.
 
-Integrate by constructing `Contracts(ShoppingRequest, OrchestratorPlan, Assessment)`
-and `EvaluationWorkflow(contracts, extract, research, decide, settings)`, then call
-`create_app(workflow=workflow)`. The injected async extraction function accepts a
-request; async research accepts `(plan, task)` and returns evidence; synchronous
-decision accepts `(request, plan, evidence)` and returns D's assessment.
-These callable boundaries are implemented; shared domain models are exported
-from `app.models`. Research/URL/claim safety belongs to C and
-decision/SMS formatting to D. This scaffold never fetches a supplied product URL.
+`create_app()` loads the root `.env` without changing process environment; environment
+variables take precedence. Existing injected workflows remain supported for tests.
+Copy `.env.example` to `.env` only if you do not already have a local `.env`.
+
+```dotenv
+VIZS_PROVIDER_MODE=offline
+VIZS_ENABLE_MOCK_SMS=false
+XAI_API_KEY=your_xai_key
+XAI_MODEL=your_supported_model_id
+TAVILY_API_KEY=your_tavily_key
+```
+
+Keys alone never enable provider calls. Explicit `VIZS_PROVIDER_MODE=live` allows
+requests to use credits; set it only when authorized. No provider call happens on
+startup. Grok's client closes on shutdown after jobs stop. Missing configuration,
+provider failures and timeouts stay explicit; research snippets remain unverified.
+Photon's webhook remains disabled regardless of provider mode.
+
+Try an offline request while the local server is running:
+
+```powershell
+$body = @{ request_id = 'local-1'; message_text = 'Check https://example.com/perfume'; channel = 'debug' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/evaluate -ContentType 'application/json' -Body $body
+```
 
 The opt-in `/api/v1/mock/messages` simulator requires
-`Settings(enable_mock_sms=True)`, an injected workflow, and D's `format_sms`
-callable through `create_app`. Its local JSON is `{"event_id":"synthetic-1","text":"test"}`;
+`VIZS_ENABLE_MOCK_SMS=true` (or `Settings(enable_mock_sms=True)`). The assembled
+workflow and D's formatter are supplied automatically; custom injected workflows
+must provide their own formatter. Its local JSON is `{"event_id":"synthetic-1","text":"test"}`;
 this is **not Photon JSON**. Mock sends remain in memory and include a simulation
 label. Keep this developer API local: application-level authentication is not
 implemented. Do not expose it publicly as a production service.
@@ -43,9 +59,9 @@ implemented. Do not expose it publicly as a production service.
 
 The full suite includes D's executable contracts and labeled synthetic fixtures,
 B/C mocked HTTP tests, and A's injected API/job tests. No live provider claims follow
-from these tests. Run `.venv/Scripts/python.exe -m pytest -q` (last run: 91 passed). Jobs/deduplication are bounded, single-process,
+from these tests. Run `.venv/Scripts/python.exe -m pytest -q` (last run: 116 passed). Jobs/deduplication are bounded, single-process,
 non-durable, and lost on restart. Default limits: 32 active jobs, 1,024 dedupe
-records retained for one hour, two seller research calls, 20 seconds per evaluation
+records retained for one hour, two seller research calls, 30 seconds per Grok extraction and 55 seconds per evaluation
 or job, and 16 KiB request bodies. Capacity exhaustion rejects new events; sends
 that fail are recorded as failed without automatic retry. Status is internal only.
 Long-running synchronous injected functions cannot be preempted by asyncio's
@@ -100,7 +116,7 @@ docs/PROJECT_BRIEF.md
  docs/INTEGRATION_RUNBOOK.md
 ```
 
-## Start now — two ways to get a Copilot implementation plan
+## Start now â€” two ways to get a Copilot implementation plan
 
 **Universal (works regardless of harness):** In VS Code Copilot Chat, select **Plan** if available, or `tech-lead`, and paste all text from `COPILOT_PLAN_TEXT.txt`. Ask for a file-by-file plan **without editing source**.
 
@@ -142,3 +158,17 @@ Credit-card optimization, exact-match multi-merchant price comparison, Redis, Po
 - Tavily extract: https://docs.tavily.com/documentation/api-reference/endpoint/extract
 - Photon 2.0 announcement: https://photon.codes/blog/introducing-photon-2.0
 - Photon public API spec (check compatibility with your beta setup): https://github.com/photon-hq/api
+
+
+## Research response status
+
+Relevant returned snippets now survive as unknown `search_snippet` references, with up to two intact links labeled "Unverified source". An authorization claim in a snippet does not change risk. The response distinguishes empty, filtered, unavailable and timed-out research and retains explicit authorization/authenticity uncertainty. Assessment research reports include bounded returned/retained/filtered counts without logging private message text. See `docs/RESEARCH_OUTPUT_HANDOFF.md`. The bounded phone listener is not always running; another live test requires explicitly starting it.
+
+
+## Confirmed live checkpoint and next work
+
+One registered-phone iMessage test completed: valid Grok extraction, Tavily returned five records with two retained/three filtered, VERIFY_FIRST / partial, and the user confirmed receipt of unverified source links. This does not verify authenticity, independently validate search snippets, establish SMS transport, or deploy a persistent service. Earlier handoffs describe historical runs.
+
+The bounded bridge is `app/adapters/spectrum/src/test-bridge.mjs` (the default `npm start` remains the original echo agent). It requires Photon project credentials, `VIZS_REGISTERED_RECIPIENT` obtained from the project's opted-in registered user, and `VIZS_LOCAL_API=http://127.0.0.1:<port>/api/v1/evaluate-message`. Run the Python API on loopback with explicitly authorized live mode; run only one listener per project. Recipient/project credentials are supplied through process environment, never source code. The original live test used a temporary hidden supervisor that stopped both processes after the bounded evaluation; that local supervisor is not part of the repository. A reusable launch/stop command is the next operational improvement.
+
+Next: make the bounded launcher reproducible, improve manufacturer/seller/brand/region source validation, then stabilize a persistent messaging/demo path. Continue using conservative unknown outcomes; do not promote snippets to verified facts for a favorable demo.

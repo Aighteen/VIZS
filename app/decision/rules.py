@@ -10,7 +10,7 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
     if plan.data_mode == "live" and records and all(e.data_mode == "live" for e in records):
         mode = "live"
     risk, action = Risk.INSUFFICIENT_EVIDENCE, Decision.VERIFY_FIRST
-    summary = "Seller credibility could not be established. Verify the seller and return terms before buying."
+    summary = "Seller authorization remains unconfirmed. Verify authorization and return terms before buying."
     missing = ["Independent seller verification", "Product authenticity is not established."]
     selected = []
     if not plan.product_url or plan.requires_user_input or plan.intent != "evaluate_purchase":
@@ -20,6 +20,7 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
     else:
         host = plan.product_url.host.lower().removeprefix("www.")
         relevant = [e for e in records if e.seller_domain and e.seller_domain.lower().removeprefix("www.") == host]
+        selected = relevant
         grounded = [e for e in relevant if e.claim_status == "verified_fact" and e.excerpt]
         authorized = [e for e in grounded if e.finding == "seller_authorized" and e.evidence_type == "official" and e.polarity == "supports"]
         adverse = [e for e in grounded if e.finding == "substantial_adverse" and e.evidence_type in {"regulatory", "investigation"} and e.polarity == "supports"]

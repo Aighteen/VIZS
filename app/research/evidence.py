@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import urlsplit
 
-from app.models import Evidence
+from app.models import Evidence, ResearchReport
 from app.research.provider import ResearchUnavailable, SearchProvider, SourceRecord
 from app.research.url_safety import UnsafeURL, public_url, validate_public_destination
 
@@ -25,7 +25,8 @@ def normalize_record(record: SourceRecord, seller_domain: str) -> Evidence | Non
     """
     import re
     url = public_url(record.source_url)
-    source_host = urlsplit(url).hostname
+    source_host = urlsplit(url).hostname.lower().removeprefix("www.")
+    seller_domain = seller_domain.lower().removeprefix("www.")
     domain_pattern = r"(?<![\w.-])" + re.escape(seller_domain) + r"(?![\w.-])"
     if source_host != seller_domain and not re.search(domain_pattern, record.excerpt, re.IGNORECASE):
         return None
@@ -35,16 +36,24 @@ def normalize_record(record: SourceRecord, seller_domain: str) -> Evidence | Non
     return Evidence(claim=("Unverified search excerpt: " + excerpt)[:1000], source_url=url,
                     source_title=record.title or None, excerpt=excerpt,
                     retrieved_at=record.retrieved_at, seller_domain=seller_domain,
-                    evidence_type="unverified_review", claim_status="unknown",
+                    evidence_type="search_snippet", claim_status="unknown",
                     finding="other", polarity="neutral", data_mode="partial")
 
 
 @dataclass(frozen=True)
 class ResearchResult:
     evidence: list[Evidence]
-    status: Literal["partial", "empty", "unavailable", "unsafe_url", "skipped"]
+    status: Literal["partial", "empty", "filtered", "unavailable", "timeout", "unsafe_url", "skipped"]
+    provider_called: bool = False
+    records_received: int = 0
+    records_filtered: int = 0
     data_mode: str = "partial"
     uncertainty: str = "Search snippets are unverified; authorization, brand and region remain unconfirmed."
+
+    def report(self) -> ResearchReport:
+        return ResearchReport(status=self.status, provider_called=self.provider_called,
+                              records_received=self.records_received,
+                              records_retained=len(self.evidence), records_filtered=self.records_filtered)
 
 
 class SellerResearch:
@@ -73,9 +82,17 @@ class SellerResearch:
         query = f'"{domain}" seller authorization return policy complaints'
         try:
             async with asyncio.timeout(10):
-                records = await self.provider.search(query)
-        except (ResearchUnavailable, TimeoutError):
-            return ResearchResult([], "unavailable")
+                if hasattr(self.provider, "search_with_status"):
+                    response = await self.provider.search_with_status(query)
+                    records = response.records
+                    received = response.records_received
+                else:
+                    records = await self.provider.search(query)
+                    received = min(len(records), 5)
+        except ResearchUnavailable as exc:
+            return ResearchResult([], "timeout" if exc.reason == "timeout" else "unavailable", provider_called=True)
+        except TimeoutError:
+            return ResearchResult([], "timeout", provider_called=True)
         evidence = []
         seen = set()
         for record in records[:5]:
@@ -86,4 +103,6 @@ class SellerResearch:
             if item and str(item.source_url) not in seen:
                 seen.add(str(item.source_url))
                 evidence.append(item)
-        return ResearchResult(evidence, "partial" if evidence else "empty")
+        status = "partial" if evidence else "filtered" if received else "empty"
+        return ResearchResult(evidence, status, provider_called=True,
+                              records_received=received, records_filtered=received-len(evidence))

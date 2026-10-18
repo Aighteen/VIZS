@@ -36,13 +36,34 @@ class EvaluationWorkflow:
             if plan.request_id != request.request_id:
                 raise ValueError("Mismatched plan correlation")
             evidence = []
+            research_gaps = []
+            research_reports = []
             if plan.intent == "evaluate_purchase" and not plan.requires_user_input:
                 # P0 seller research only. Model output cannot expand tool permissions.
                 tasks = [t for t in plan.tasks if t.kind == "verify_seller"]
                 for task in tasks[:self.settings.max_research_calls]:
-                    evidence.extend(await self.research(plan, task))
+                    findings = await self.research(plan, task)
+                    if isinstance(findings, list):
+                        evidence.extend(findings)
+                    else:
+                        evidence.extend(findings.evidence)
+                        research_reports.append(findings.report())
+                        gap = {"unavailable": "Seller research is unavailable; try again later.",
+                               "unsafe_url": "Listing destination was unsafe or could not be resolved.",
+                               "empty": "No relevant seller sources were returned.",
+                               "filtered": "Returned sources did not match the seller or failed validation.",
+                               "timeout": "Seller research timed out; try again later.",
+                               "partial": findings.uncertainty}.get(findings.status)
+                        if gap and gap not in research_gaps:
+                            research_gaps.append(gap)
             result = self.contracts.assessment.model_validate(
                 self.decide(request, plan, evidence))
             if result.request_id != request.request_id:
                 raise ValueError("Mismatched assessment correlation")
+            if research_reports and hasattr(result, "research"):
+                result = self.contracts.assessment.model_validate(result.model_copy(update={
+                    "research": research_reports}).model_dump())
+            if research_gaps and hasattr(result, "missing_information"):
+                result = self.contracts.assessment.model_validate(result.model_copy(update={
+                    "missing_information": (research_gaps + result.missing_information)[:10]}).model_dump())
             return result

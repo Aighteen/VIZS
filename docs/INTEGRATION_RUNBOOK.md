@@ -1,10 +1,10 @@
-# Integration runbook — verify in this order
+# Integration runbook â€” verify in this order
 
 This is an action plan, not a record of successful API access. Update PASS/BLOCKED only after observing real results.
 
 | Probe | How to check | Pass evidence | Status |
 |---|---|---|---|
-| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and injected evaluation pass; default evaluation is 503 pending runtime wiring | OFFLINE PASS (91 combined tests); live server not probed |
+| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and injected evaluation pass; default offline evaluation returns a partial assessment/clarification | OFFLINE PASS (116 tests); local API and registered-phone iMessage cited reply observed |
 | Grok API | Use approved model and vendor SDK/Responses client; test small structured response | Valid parsed `OrchestratorPlan` | UNTESTED |
 | Research provider | Tavily API key/search request, or xAI supported native web search | Real source record URLs logged without sensitive info | UNTESTED |
 | Photon 2.0 Beta | Confirm beta account access, channel/phone provision, precise callback auth/send docs | Visible inbound message and accepted outbound SMS | UNTESTED |
@@ -54,3 +54,7 @@ See `NEXT_STEPS.md` for the current wiring assignment and `PACKET_WORKTREE_HANDO
 ## Information to avoid collecting
 
 No full credit-card numbers, CVV, account password, banking API tokens through SMS; no unjustified storing of SMS phone numbers and listing URLs in public log files.
+
+## Latest confirmed checkpoint
+
+Registered inbound listing -> Grok -> Tavily (five returned, two retained, three filtered) -> VERIFY_FIRST/partial -> Spectrum iMessage reply with unverified links; user confirmed handset receipt. See INBOUND_TEST_HANDOFF.md. Table entries describing SMS/FastAPI webhook/deployment remain separate unverified gates. No persistent listener is running after the bounded test.

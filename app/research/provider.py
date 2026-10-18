@@ -16,6 +16,16 @@ class SourceRecord:
 
 class ResearchUnavailable(Exception):
     """Controlled provider failure without response bodies or credentials."""
+    def __init__(self, message: str, *, reason: str = "unavailable"):
+        super().__init__(message)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class SearchResponse:
+    records: list[SourceRecord]
+    records_received: int
+
 
 
 class SearchProvider(Protocol):

@@ -4,15 +4,15 @@ Shared manually read guide, not an automatically installed native skill. Read `A
 
 ## Work packets
 
-1. 30–45 minutes: establish dependency manifest, configuration, app factory, `/healthz`, and `/api/v1/evaluate` using D's contracts and injected fixtures.
-2. 45–60 minutes: wire the shared bounded workflow, separate mock transport, atomic in-process deduplication, and background jobs. Keep mock events separate from the real Photon endpoint.
-3. 60–90 minutes: implement the Photon adapter only against verified account-specific callback/auth/send docs. Otherwise keep live transport disabled and document the blocker.
+1. 30â€“45 minutes: establish dependency manifest, configuration, app factory, `/healthz`, and `/api/v1/evaluate` using D's contracts and injected fixtures.
+2. 45â€“60 minutes: wire the shared bounded workflow, separate mock transport, atomic in-process deduplication, and background jobs. Keep mock events separate from the real Photon endpoint.
+3. 60â€“90 minutes: implement the Photon adapter only against verified account-specific callback/auth/send docs. Otherwise keep live transport disabled and document the blocker.
 
 Dependencies: D supplies shared models first; B/C/D implementations replace typed fakes later. Do not duplicate extraction, research, or policy inside routes.
 
 Current implementation: A-D are merged; shared contracts are in `app.models`.
-The default evaluate endpoint still fails closed with 503 because runtime wiring
-is pending. The combined offline suite passed 91 tests. See `docs/NEXT_STEPS.md`
+Runtime wiring is now implemented locally; offline evaluations return partial
+assessments and explicit clarification. Live mode requires explicit configuration. The combined offline suite passed 91 tests. See `docs/NEXT_STEPS.md`
 for the next A assignment; older packet handoffs describe historical results.
 The independent mock event is not a Photon wire contract.
 

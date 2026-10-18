@@ -42,3 +42,12 @@ def test_mismatched_identity(request_data,plan):
     with pytest.raises(ValueError):
         decide(request_data,plan.model_copy(update={'request_id':'other'}),[])
 
+
+
+def test_unverified_relevant_sources_survive_without_changing_decision(request_data,plan,official):
+    weak=official.model_copy(update={"claim_status":"unknown","evidence_type":"search_snippet","finding":"other","polarity":"neutral"})
+    unrelated=weak.model_copy(update={"seller_domain":"other.example"})
+    result=decide(request_data,plan,[weak,unrelated])
+    assert result.decision=="VERIFY_FIRST"
+    assert result.evidence==[weak]
+    assert result.evidence[0].claim_status=="unknown"

@@ -107,3 +107,12 @@ send_text(destination, body, correlation_id) -> SendResult
 `tests/fixtures/positive.json` and `insufficient.json` are SYNTHETIC, mock-labeled contract examples, not real research. Risk/decision combinations are validated; mock/partial evidence cannot produce a live-labeled assessment. HttpUrl syntax is not SSRF protection; C owns DNS/redirect safety.
 
 Policy integration: `decide(request, plan, evidence) -> Assessment`; `format_sms(assessment) -> str`. Research yields `list[Evidence]`. Strong findings must refer to the listing seller via seller_domain. Official supported authorization permits LOWER_RISK; two independent regulatory/investigation substantial adverse findings permit HIGHER_RISK. Conflicting or weak records conservatively yield VERIFY_FIRST. These are prototype decision criteria, never authenticity verification.
+
+
+## Research response follow-up
+
+`Evidence.evidence_type` additionally accepts `search_snippet`. These records remain `claim_status=unknown`, neutral and non-decisive; relevant records are retained as explicitly unverified source references even when the decision remains VERIFY_FIRST. Existing risk criteria are unchanged.
+
+`Assessment.research` is a default-empty list of up to three `ResearchReport` records. Fields: provider=tavily, status=partial/empty/filtered/unavailable/timeout/unsafe_url/skipped, provider_called, records_received, records_retained, records_filtered. Counts are bounded 0..5 per call and received=retained+filtered. Partial requires retained records; filtered requires received records and zero retained; other states contain no records. These counts describe research normalization, before policy selects its decision evidence.
+
+`POST /api/v1/evaluate-message` is the local bridge endpoint returning `{assessment, message_text}` using the same evaluation/policy and D formatter; no Photon callback payload or authentication schema is implied. SDK inbound authentication and registered-sender admission are handled by the bounded Spectrum test listener. Developer API remains loopback-only in tests.

@@ -32,3 +32,12 @@ def test_risk_and_mock_consistency():
     data['data_mode'] = 'live'
     with pytest.raises(ValidationError):
         Assessment.model_validate(data)
+
+
+def test_research_report_count_and_status_consistency():
+    from app.models import ResearchReport
+    valid=ResearchReport(status="partial",provider_called=True,records_received=3,records_retained=1,records_filtered=2)
+    assert valid.records_retained==1
+    for fields in [dict(status="partial"),dict(status="filtered"),dict(status="empty",provider_called=True,records_received=1,records_retained=1),dict(status="partial",records_received=1,records_retained=1),dict(status="partial",provider_called=True,records_received=2,records_retained=1)]:
+        with pytest.raises(ValidationError):
+            ResearchReport(**fields)

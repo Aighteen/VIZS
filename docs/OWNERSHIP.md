@@ -1,6 +1,6 @@
 # Development ownership
 
-Status: Packets B, C, and D merged into the Packet A integration branch by explicit human instruction; combined offline suite passes 91 tests. Default application wiring and live-provider gates remain pending. Packet A was assigned to this Codex session by the human. Packets B-D assigned by the human to dedicated Codex agents; human identities remain unspecified. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
+Status: Packets B, C, and D merged into the Packet A integration branch by explicit human instruction; combined offline suite passes 116 tests. Default application wiring is implemented locally; a one-off live Snowboard keyword probe passed Grok/Tavily and completed a Spectrum iMessage send request; a fragrance-URL cited reply was received by the user; the latest source-retention/status changes passed both offline tests and one live registered-phone iMessage run. Packet A was assigned to this Codex session by the human. Packets B-D assigned by the human to dedicated Codex agents; human identities remain unspecified. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
 
 ## Assignment register
 
@@ -8,7 +8,7 @@ The human coordinator assigns each session; A maintains this register afterward.
 
 | Packet | Human / AI tool and session | Branch | Checkout/worktree | Status |
 |---|---|---|---|---|
-| A: integration, Photon, submission coordination | Human name TBD / current Codex session | `feat/packet-a-integration` | `C:\Github\VIZS-packet-a` | Integration coordinator; B-D merged, 91 tests pass |
+| A: integration, Photon, submission coordination | Human name TBD / current Codex session | `feat/packet-a-integration` | `C:\Github\VIZS-packet-a` | Integration coordinator; B-D merged, 116 tests pass |
 | B: Grok extraction | Codex Packet B agent | `feat/packet-b-grok` | `C:\Github\VIZS-packet-b` | Implementation merged into A |
 | C: research and evidence | Codex Packet C agent | `feat/packet-c-research` | `C:\Github\VIZS-packet-c` | Implementation merged into A |
 | D: contracts, policy, QA | Codex Packet D agent | `feat/packet-d-policy-qa` | `C:\Github\VIZS-packet-d` | Contracts, policy and QA merged into A |
@@ -16,7 +16,7 @@ The human coordinator assigns each session; A maintains this register afterward.
 - Integration owner: current Packet A Codex session; merges require explicit instruction.
 - Human Devpost submitter and backup: TBD.
 - Inspected repository base commit: `ffc3e85`; shared scaffold `7d6f11a`, D contracts `f1ba046` now merged into A.
-- Research provider: Tavily implementation merged; live retrieval remains unverified.
+- Research provider: Tavily; one live Snowboard keyword search returned three sources (docs/LIVE_KEYWORD_PROBE.md). Seller research remains unverified.
 - Photon Spectrum: Free VIZS project configured, authorized iPhone registered, SDK iMessage echo agent running. Inbound text and completed reply request observed; user reported connection success. FastAPI callback/auth/send contract remains UNVERIFIED; no webhook enabled.
 
 ## Exclusive writable paths
@@ -45,3 +45,7 @@ These are development roles. Current runtime scope is one central Grok orchestra
 
 Human submitter targets Saturday October 17, 2026 at 10:00 PM for the mandatory 10:30 PM draft, and Sunday October 18 at 9:15 AM for the 10:00 AM final. Feature freeze: Sunday 7:30 AM. Preserve at least 30 minutes for upload checks. Humans select tracks and submit; see `SPRINT_PLAN.md` and `SUBMISSION_CHECKLIST.md`.
 
+
+## Current follow-up assignment
+
+Human instructed root to continue the proposed C/D research-output improvement. This session owns the scoped follow-up in the A integration checkout: app/research/{provider,evidence}.py, app/services/tavily.py, app/models/__init__.py, app/decision/{rules,sms}.py, their focused tests, A workflow/API/bridge diagnostics, and coordination docs. Other packet checkouts remain untouched. No additional agents or live calls required. Preserve prior local work.
