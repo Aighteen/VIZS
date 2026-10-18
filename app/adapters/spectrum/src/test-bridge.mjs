@@ -17,6 +17,8 @@ async function close(reason) {
   log(reason);
   if (app) await app.stop();
 }
+// Launcher/terminal stop: close the Spectrum connection before exiting (second signal uses Node's default).
+for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => { void close("BRIDGE_SIGNALLED").finally(() => process.exit(0)); });
 const deadline = setTimeout(() => { void close("TEST_WINDOW_EXPIRED").finally(() => process.exit(0)); }, 600_000);
 const handler = createBridgeHandler({recipient, onSendResult: async (space, sent) => {
   let latest = sent;
