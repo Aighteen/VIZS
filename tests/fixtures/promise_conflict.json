@@ -3,7 +3,7 @@
   "sources": [
     {
       "source_id": "listing",
-      "url": "https://shop.example/perfume",
+      "url": "https://shop.example/product",
       "retrieved_at": "2026-10-17T12:00:00Z",
       "content": "Free returns. US customers only.",
       "content_kind": "merchant_page",

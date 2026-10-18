@@ -148,7 +148,7 @@ def test_QA08_real_tld_idn_ip_and_tel_are_neutralized(text):
 
 def test_QA08_accepted_residual_false_positive_real_cctld_in_prose():
     """Documented residual: a real ccTLD suffix in prose is still replaced (safety wins)."""
-    assert neutralize_links("Chanel No.5 Eau.de Parfum") == f"Chanel No.5 {LINK_REMOVED} Parfum"
+    assert neutralize_links("Model No.5 Haus.de Edition") == f"Model No.5 {LINK_REMOVED} Edition"
 
 
 def test_QA08_prose_survives_in_phone_reply():

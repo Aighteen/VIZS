@@ -33,7 +33,7 @@ QA = Path(__file__).parent / "qa_fixtures"
 FIXTURES = Path(__file__).parent / "fixtures"
 
 SELLER = "synthetic-shop.com"
-LISTING = f"https://{SELLER}/perfume/qa"
+LISTING = f"https://{SELLER}/product/qa"
 TOKEN = "qa-synthetic-pairing-token"
 XAI_KEY = "qa-synthetic-xai-key-do-not-use"
 TAVILY_KEY = "qa-synthetic-tavily-key-do-not-use"
@@ -129,7 +129,7 @@ class Harness:
         return create_app(settings=self.settings, xai_transport=transport, tavily_transport=transport,
                           domain_transport=transport, destination_validator=self.destination)
 
-    def post(self, path="/api/v1/evaluate-message", text=f"Is this perfume seller ok? {LISTING}",
+    def post(self, path="/api/v1/evaluate-message", text=f"Is this product seller ok? {LISTING}",
              request_id="qa-request", headers=None):
         with TestClient(self.app()) as client:
             return client.post(path, json={"request_id": request_id, "message_text": text, "channel": "debug"},
@@ -195,7 +195,7 @@ def test_INPUT_01_valid_listing_binds_identity_price_and_one_seller_task():
     assert assessment["decision"] == "VERIFY_FIRST"
 
 
-@pytest.mark.parametrize("text", ["Is this perfume legit? $150",
+@pytest.mark.parametrize("text", ["Is this product legit? $150",
                                   f"Compare {LISTING} and https://other-seller.com/item"])
 def test_INPUT_02_missing_or_ambiguous_url_clarifies_without_research(text):
     harness = Harness()
@@ -212,7 +212,7 @@ def test_INPUT_02_missing_or_ambiguous_url_clarifies_without_research(text):
 
 
 @pytest.mark.parametrize("plan", [
-    plan_output(product_url="https://invented-seller.com/perfume"),
+    plan_output(product_url="https://invented-seller.com/product"),
     plan_output(tasks=[{"kind": "verify_seller", "query": "x"}, {"kind": "recommend_card", "query": "x"}]),
     plan_output(purchase_price="99.00"),
     plan_output(brand="InventedBrand"),
@@ -304,7 +304,7 @@ def test_PROM_02_merged_or_invented_ranges_are_rejected(bad_row):
 
 def test_PROM_03_local_address_without_origin_disclosure_stays_unknown():
     page = SourceRecord(LISTING, "SYNTHETIC listing",
-                        "Synthetic Perfume LLC, 100 Pike Street, Seattle, WA. Free returns within 30 days.",
+                        "Synthetic Product LLC, 100 Pike Street, Seattle, WA. Free returns within 30 days.",
                         datetime.now(timezone.utc), content_kind="merchant_page")
     sheet = asyncio.run(PromiseExtractor(data_mode="mock").extract(SimpleNamespace(product_url=LISTING), [page]))
     origin = [r for r in sheet.records if r.topic == "shipping_origin"]
@@ -323,7 +323,7 @@ def test_PROM_04_not_disclosed_requires_inspected_merchant_page_never_sitewide_a
                                                 "sources": [source("s1", f"https://{SELLER}/a", "Returns info", kind="search_snippet")]})
     assert validate_promise_sheet(snippet_only, snippet_only.sources).records == []
     inspected = PromiseSheet.model_validate({"seller_domain": SELLER, "records": [row("returns", "not_disclosed")],
-                                             "sources": [source("p1", LISTING, "Eau de parfum 50 ml.")]})
+                                             "sources": [source("p1", LISTING, "Item size 50 ml.")]})
     checked = validate_promise_sheet(inspected, inspected.sources)
     assert [r.status for r in checked.records] == ["not_disclosed"]
     assert checked.records[0].explanation == "Not disclosed in inspected sources."
@@ -370,7 +370,7 @@ def test_PROM_07_unrelated_seller_page_is_excluded():
     assert checked.records == [] and checked.sources == []
     harness = Harness(
         search=[{"url": "https://other-seller.com/returns", "title": "Other", "content": "Other seller returns policy"}],
-        extract=[{"url": LISTING, "raw_content": "Eau de parfum."},
+        extract=[{"url": LISTING, "raw_content": "Item details."},
                  {"url": "https://other-seller.com/returns", "raw_content": "Free returns."}],
         promise={"records": [row("returns", "supported_as_statement", [("source_2", "Free returns.")], statement="Free returns.")]})
     body = harness.post().json()
@@ -486,7 +486,7 @@ def test_RES_01_five_received_two_retained_three_filtered_partial():
     results = [
         {"url": f"https://{SELLER}/returns", "title": "Returns", "content": "Returns accepted within 30 days."},
         {"url": "https://forum-reviews.com/t/1", "title": "Forum", "content": f"Has anyone bought from {SELLER}?"},
-        {"url": "https://other-seller.com/", "title": "Other", "content": "A different perfume store."},
+        {"url": "https://other-seller.com/", "title": "Other", "content": "A different product store."},
         {"url": "http://10.0.0.8/internal", "title": "Private", "content": f"{SELLER} internal"},
         {"url": "https://empty-content.com/", "title": "Empty", "content": "   "},
     ]

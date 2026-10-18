@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createBridgeHandler} from "./bridge-handler.mjs";
 const recipient="synthetic-recipient";
-const message={id:"one",direction:"inbound",sender:{id:recipient},content:{type:"text",text:"https://example.com/perfume"}};
+const message={id:"one",direction:"inbound",sender:{id:recipient},content:{type:"text",text:"https://example.com/product"}};
 test("only registered direct inbound text is admitted", async()=>{
  let calls=0;
  const handler=createBridgeHandler({recipient,evaluate:async()=>{calls++;return {message_text:"partial"}}});

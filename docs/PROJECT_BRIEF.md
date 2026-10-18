@@ -1,4 +1,4 @@
-# Project brief - fragrance shopping assistant through Photon and an animated browser pet
+# Project brief - online shopping assistant through Photon and an animated browser pet
 
 Current user-approved direction: both Photon messaging and a Chrome extension with an animated on-page shopping pet. They are core channels sharing the existing evidence-backed backend. See EXTENSION_SCOPE.md for acceptance criteria and boundaries and NEXT_STEPS.md for current status. The backend, extension route and MV3 extension exist; live runs are pending.
 
@@ -8,11 +8,11 @@ Use a promise-first explanation: what the merchant promises, what retrieved sour
 
 ## Customer and problem
 
-Fragrance shoppers need to judge seller credibility without treating unknown sellers, gray-market listings or large discounts as proof of fraud. The assistant should offer actionable advice with traceable sources and honest uncertainty while they browse.
+Online shoppers need to judge seller credibility without treating unknown sellers, gray-market listings or large discounts as proof of fraud. The assistant should offer actionable advice with traceable sources and honest uncertainty while they browse.
 
 ## Browser journey
 
-1. Open a fragrance product listing and activate the extension.
+1. Open a product listing and activate the extension.
 2. Click the pet's Check seller button; submit the page URL and optional confirmed price.
 3. Pet shows Searching while FastAPI runs Grok extraction, Tavily research, source validation and deterministic Python policy.
 4. Pet signals completion; its panel shows seller risk, buying advice, source links and remaining unknowns.
@@ -39,7 +39,7 @@ Packets A-D, runtime wiring, the promise sheet and the extension route are on `m
 
 ## Photon channel and deferred work
 
-Photon messaging remains core; retain the tested bounded Spectrum iMessage bridge and add a reproducible launch/stop flow. It is not verified SMS or an always-on deployed service. Pricing comparisons, card rewards, DETAILS/history and additional browsers/product categories are P1 only after both-channel P0. Pet cosmetics and multiple pets are deferred.
+Photon messaging remains core; retain the tested bounded Spectrum iMessage bridge and add a reproducible launch/stop flow. It is not verified SMS or an always-on deployed service. Pricing comparisons, card rewards, DETAILS/history and additional browsers are P1 only after both-channel P0. Pet cosmetics and multiple pets are deferred.
 
 Autonomous purchasing, banking linkage, payment credentials, massive scraping, fine-tuning, fraud percentages and multi-agent infrastructure are outside scope.
 

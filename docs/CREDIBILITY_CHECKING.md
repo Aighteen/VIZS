@@ -60,7 +60,7 @@ First acceptance target: a synthetic store's "free returns" claim and policy sho
 
 ## Not adopted from the broader brief
 
-This credibility request does not authorize autonomous payments, Visa Acceptance/Microform/TAP, card handling, payment-bound receipts, RFC 3161 timestamp integration, post-purchase tracking, dispute/legal advice or auto-filing, public merchant reputation, GPU data generation/fine-tuning, a 300-store study, mass scraping, new product categories, or a new application stack. These need separate scope, access and validation. A simple retrieval timestamp is not an independent certified timestamp or immutable historical snapshot.
+This credibility request does not authorize autonomous payments, Visa Acceptance/Microform/TAP, card handling, payment-bound receipts, RFC 3161 timestamp integration, post-purchase tracking, dispute/legal advice or auto-filing, public merchant reputation, GPU data generation/fine-tuning, a 300-store study, mass scraping, or a new application stack. These need separate scope, access and validation. A simple retrieval timestamp is not an independent certified timestamp or immutable historical snapshot.
 
 The supplied FTC/Visa statistics, competitor comparisons, model capabilities/licenses, timing estimates and legal/dispute table are source material, not verified repository facts. Before publishing any such claim, verify the primary source and date. No bank outcome, return right or dispute deadline should be asserted from this brief alone. The referenced docs/RESEARCH.md and CLUADE.md are external reference names, not instructions to fabricate missing repository files. Human story/screenshot collection requires consent and is not performed by this update.
 

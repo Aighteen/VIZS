@@ -10,7 +10,7 @@ User authorized one registered-phone inbound live test. No existing Node/Python 
 
 Ready was observed. Actual inbound/reply/handset receipt remains pending user action. Local status directory: C:\Users\haoka\AppData\Local\Temp\vizs-inbound-test-zzhzv5ka. Inspect status.json and privacy-filtered bridge.log on follow-up; do not print credentials, phone numbers or private incoming text. A ready listener is not proof of a successful shopping conversation. FastAPI /webhooks/photon remains disabled; this bridge uses the verified Spectrum SDK stream over iMessage, not a claimed SMS webhook.
 
-Next user action: send a real fragrance listing URL (optional price) in the existing Photon iMessage conversation. Keyword-only input requests a listing URL. Expect conservative results; snippets cannot establish seller authorization. After an attempted reply inspect status and obtain handset receipt confirmation. No commit, push or deployment performed.
+Next user action: send a real product listing URL (optional price) in the existing Photon iMessage conversation. Keyword-only input requests a listing URL. Expect conservative results; snippets cannot establish seller authorization. After an attempted reply inspect status and obtain handset receipt confirmation. No commit, push or deployment performed.
 
 ## Observed after user sent message
 
@@ -22,7 +22,7 @@ User reported no visible reply. Read-only Photon SDK messages.listInChat for the
 
 Fixed the test budget to allow up to three inbound events, with at most one containing a URL; a clarification no longer immediately shuts down the test. Added regression test; Node bridge suite => 4 passed; syntax check and diff --check exit 0. Added privacy-safe evaluation outcome logs and SDK-returned delivery status reads (up to three reads, no send retry). No provider credentials/config files edited.
 
-Restart observed ready at new status directory C:\Users\haoka\AppData\Local\Temp\vizs-inbound-test-v0lrepuv. Test expires in ten minutes; request the user resend only the actual fragrance listing URL and optional price in the existing Photon iMessage conversation. Investigate fresh evaluation/delivery outcome on follow-up. Existing log/state directory preserved.
+Restart observed ready at new status directory C:\Users\haoka\AppData\Local\Temp\vizs-inbound-test-v0lrepuv. Test expires in ten minutes; request the user resend only the actual product listing URL and optional price in the existing Photon iMessage conversation. Investigate fresh evaluation/delivery outcome on follow-up. Existing log/state directory preserved.
 
 ## Second inbound outcome and timeout correction
 

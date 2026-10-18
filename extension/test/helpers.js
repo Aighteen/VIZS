@@ -15,7 +15,7 @@ export function fixture(name, requestId) {
 }
 
 export const RUNTIME_ID = "abcdefghijklmnopabcdefghijklmnop";
-export const LISTING = "https://shop.synthetic.example/perfume?id=1";
+export const LISTING = "https://shop.synthetic.example/product?id=1";
 
 export function contentSender(overrides = {}) {
   return { id: RUNTIME_ID, frameId: 0, url: LISTING, tab: { id: 7, url: LISTING }, ...overrides };

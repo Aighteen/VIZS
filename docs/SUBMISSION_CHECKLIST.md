@@ -24,7 +24,7 @@
 
 ## 90-second video script
 
-- 0–12 s: counterfeit uncertainty, seller trust and expensive fragrance purchases.
+- 0–12 s: counterfeit uncertainty, seller trust and expensive online purchases.
 - 12–32 s: real Photon iMessage input with listing URL (or the extension pet's Check seller, once built), show delivery.
 - 32–58 s: brief Grok task plan + evidence sources + explicit risk policy.
 - 58–80 s: show the reply and/or pet result panel, including a promise row with its quote; distinguish `INSUFFICIENT_EVIDENCE` from fraud claims.

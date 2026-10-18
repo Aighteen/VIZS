@@ -37,4 +37,4 @@ The backend returns one final result with no progress phases. Show Searching for
 
 ## Deferred
 
-Pricing/card rewards, DETAILS/history, pet cosmetics, other browsers/categories, image matching, AI-photo detection and advanced infrastructure wait until both channels meet P0.
+Pricing/card rewards, DETAILS/history, pet cosmetics, other browsers, image matching, AI-photo detection and advanced infrastructure wait until both channels meet P0.

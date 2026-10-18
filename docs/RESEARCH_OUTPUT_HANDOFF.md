@@ -31,7 +31,7 @@ No further wiring is required: runtime already calls SellerResearch.research_wit
 
 ## Next step and limitations
 
-Run one fresh registered-phone fragrance URL test when requested and inspect research status plus counts. Listener from the previous test has stopped; do not claim it is running. An insufficient conclusion should now include relevant unverified links when any survive. If results are empty/filtered/failed, the reply explains that state rather than suggesting fraud. Still needed for stronger conclusions: grounded official-source validation with matching seller/brand/region; never lower thresholds to force a favorable result. Latest implementation and docs remain local and uncommitted; GitHub main remains ecee580 until a requested commit/push.
+Run one fresh registered-phone listing URL test when requested and inspect research status plus counts. Listener from the previous test has stopped; do not claim it is running. An insufficient conclusion should now include relevant unverified links when any survive. If results are empty/filtered/failed, the reply explains that state rather than suggesting fraud. Still needed for stronger conclusions: grounded official-source validation with matching seller/brand/region; never lower thresholds to force a favorable result. Latest implementation and docs remain local and uncommitted; GitHub main remains ecee580 until a requested commit/push.
 
 ## Subsequent authorized live check
 

@@ -1,6 +1,6 @@
-# VIZS - fragrance shopping assistant
+# VIZS - online shopping assistant
 
-**Project:** Evidence-backed fragrance seller assessments through both Photon messaging and a Chrome extension with an animated on-page shopping pet. Both channels share one FastAPI/Grok/Tavily backend.
+**Project:** Evidence-backed online seller assessments through both Photon messaging and a Chrome extension with an animated on-page shopping pet. Both channels share one FastAPI/Grok/Tavily backend.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent. Humans finalize tracks.
 
 ## Status (checkpoint `62f1ac8`, Saturday Oct 17 2026)
@@ -74,13 +74,13 @@ Offline request (macOS):
 
 ```sh
 curl -s http://127.0.0.1:8000/api/v1/evaluate -H 'Content-Type: application/json' \
-  -d '{"request_id":"local-1","message_text":"Check https://example.com/perfume","channel":"debug"}'
+  -d '{"request_id":"local-1","message_text":"Check https://example.com/product","channel":"debug"}'
 ```
 
 PowerShell:
 
 ```powershell
-$body = @{ request_id = 'local-1'; message_text = 'Check https://example.com/perfume'; channel = 'debug' } | ConvertTo-Json
+$body = @{ request_id = 'local-1'; message_text = 'Check https://example.com/product'; channel = 'debug' } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/evaluate -ContentType 'application/json' -Body $body
 ```
 

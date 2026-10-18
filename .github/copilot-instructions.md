@@ -4,7 +4,7 @@
 
 Preserve tracked and untracked changes. Never reset or clean Git state, bulk-restore files, force checkout, or delete another agent's work to make `git status` clean without explicit authorization for that action. Shared models belong to D; application wiring and integration belong to A. Copilot agent definitions do not configure other tools.
 
-Read the root `AGENTS.md` and relevant `docs/*.md` before nontrivial edits. This is **a fragrance shopping decision assistant with both Photon messaging and a Chrome extension with an animated on-page pet**. Current extension scope and implementation status are in `docs/EXTENSION_SCOPE.md`; Both channels are core scope and share one backend. Backend: Python/FastAPI/Pydantic. Providers in use: Photon Spectrum (iMessage), Grok, Tavily, Verisign RDAP. See `docs/NEXT_STEPS.md` for current status.
+Read the root `AGENTS.md` and relevant `docs/*.md` before nontrivial edits. This is **a online shopping decision assistant with both Photon messaging and a Chrome extension with an animated on-page pet**. Current extension scope and implementation status are in `docs/EXTENSION_SCOPE.md`; Both channels are core scope and share one backend. Backend: Python/FastAPI/Pydantic. Providers in use: Photon Spectrum (iMessage), Grok, Tavily, Verisign RDAP. See `docs/NEXT_STEPS.md` for current status.
 
 When the user asks to **plan**, inspect the repository and produce tasks, file paths, interfaces, acceptance tests, dependencies, and a deadline-aware critical path **without coding or touching files** unless requested. Use `COPILOT_PLAN_TEXT.txt` as the detailed planning specification.
 

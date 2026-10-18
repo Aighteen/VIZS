@@ -221,7 +221,7 @@ def test_QA07_bracket_and_apostrophe_boundaries(message, expected):
     ("Check https://x-shop.com/p. Is it legit?", "https://x-shop.com/p"),
     ("Check https://x-shop.com/p, thanks", "https://x-shop.com/p"),
     ("(see https://x-shop.com/p)", "https://x-shop.com/p"),
-    ("Is https://en.x-shop.com/wiki/Perfume_(100ml) legit?", "https://en.x-shop.com/wiki/Perfume_(100ml)"),
+    ("Is https://en.x-shop.com/wiki/Product_(100ml) legit?", "https://en.x-shop.com/wiki/Product_(100ml)"),
     ("Check https://x-shop.com/it's-50ml!", "https://x-shop.com/it's-50ml"),
 ])
 def test_QA07_phone_prose_rule_unchanged(message, expected):
@@ -249,7 +249,7 @@ def test_QA07_very_long_extension_url_round_trips_and_is_researched_verbatim():
 
 
 def test_QA07_trailing_dot_listing_from_extension_reaches_research_end_to_end():
-    href = f"https://{SELLER}/perfume."
+    href = f"https://{SELLER}/product."
     harness = Harness(plan=plan_output(product_url=href))
     body = harness.post(path="/api/v1/extension/evaluate", text=f"Check this listing <{href}>",
                         headers={"Authorization": "Bearer qa-synthetic-pairing-token"}).json()

@@ -39,7 +39,7 @@
         "sources": [
           {
             "source_id": "listing",
-            "url": "https://shop.synthetic.example/perfume",
+            "url": "https://shop.synthetic.example/product",
             "title": "Synthetic listing page",
             "retrieved_at": "2026-10-17T12:00:00Z",
             "content": "Free returns. US customers only.",

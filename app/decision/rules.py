@@ -5,7 +5,7 @@ from app.models import Assessment, Decision, Evidence, OrchestratorPlan, Risk, S
 # Marks a reply that must ask the user for a listing URL. Runtime replaces it when
 # the URL was supplied but extraction failed (Q2), so the phone reply never asks
 # for a URL the user already sent.
-URL_REQUEST = "Fragrance listing URL and product context"
+URL_REQUEST = "Product listing URL and context"
 
 
 # Common multi-label public suffixes. This is a deliberately small built-in list,
@@ -67,7 +67,7 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
     selected = []
     if not plan.product_url or plan.requires_user_input or plan.intent != "evaluate_purchase":
         action = Decision.NEED_MORE_INFORMATION
-        summary = "Send the fragrance listing URL so the seller can be assessed."
+        summary = "Send the product listing URL so the seller can be assessed."
         missing = [URL_REQUEST]
     else:
         host = plan.product_url.host.lower().removeprefix("www.")

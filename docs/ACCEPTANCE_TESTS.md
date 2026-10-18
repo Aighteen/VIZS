@@ -1,6 +1,6 @@
 # Completed-product acceptance test cases
 
-Scope: fragrance promise/evidence assessment through both Photon iMessage and a Chrome animated-pet extension. This is the reference release checklist, not a claim every case has passed. Historical baseline: f5af5ba, 116 Python and four bridge tests. Each implementation handoff must link automated cases or label manual/live cases pending. Payments, certified timestamps, model training, disputes, purchase history and public store scores are excluded.
+Scope: online-seller promise/evidence assessment through both Photon iMessage and a Chrome animated-pet extension. This is the reference release checklist, not a claim every case has passed. Historical baseline: f5af5ba, 116 Python and four bridge tests. Each implementation handoff must link automated cases or label manual/live cases pending. Payments, certified timestamps, model training, disputes, purchase history and public store scores are excluded.
 
 ## Test conditions
 
@@ -8,7 +8,7 @@ Use labeled synthetic fixtures and mocked provider HTTP for automated tests. Nev
 
 | ID | Case / setup | Expected result | Verification target |
 |---|---|---|---|
-| INPUT-01 | Valid fragrance listing, optional explicit currency price | Backend-bound request identity; correct supplied URL/price; one seller task | Automated |
+| INPUT-01 | Valid product listing, optional explicit currency price | Backend-bound request identity; correct supplied URL/price; one seller task | Automated |
 | INPUT-02 | Missing URL or multiple ambiguous URLs | Specific clarification, no invented listing or research | Automated |
 | INPUT-03 | Model invents URL, unsupported task or price | Reject output, conservative response, no arbitrary tools | Automated |
 | INPUT-04 | Invalid JSON, key missing, refusal, timeout | Controlled status; no raw provider body/secret | Automated |

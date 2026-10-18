@@ -87,7 +87,7 @@ send_text(destination, body, correlation_id) -> SendResult
 ## Sample DEBUG request and illustrative response
 
 ```json
-{"request_id":"req_demo_1","message_text":"Is this perfume legit? https://example.com/perfume/123 — $150","channel":"debug"}
+{"request_id":"req_demo_1","message_text":"Is this product legit? https://example.com/product/123 — $150","channel":"debug"}
 ```
 
 ```json

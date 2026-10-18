@@ -20,7 +20,7 @@ test("promise conflict shows both quotes with their source links and labels", ()
   assert.equal(conflict.merchantStatement, "Free returns.");
   assert.match(conflict.conditions, /Region: US/);
   assert.deepEqual(conflict.quotes.map((q) => q.text), ["Free returns.", "US customers pay return shipping."]);
-  assert.equal(conflict.quotes[0].source.href, "https://shop.synthetic.example/perfume");
+  assert.equal(conflict.quotes[0].source.href, "https://shop.synthetic.example/product");
   assert.equal(conflict.quotes[0].source.unverified, false); // merchant's own page: shown as merchant wording
   assert.equal(conflict.quotes[1].source.href, "https://shop.synthetic.example/returns");
   assert.equal(conflict.quotes[1].source.unverified, true); // search snippet

@@ -13,7 +13,7 @@ Why not default to **Cook Smarter**? Although it uses AI agents and automation, 
 | **Photon — Build a Messaging Agent using Photon 2.0** | Direct: messaging shopping assistant (iMessage proven via Spectrum SDK; SMS unverified) | Actually built on Photon 2.0 and live on at least one Photon channel | **High-priority candidate**; one user-confirmed iMessage round trip exists |
 | **VEYZL** | AI risks, evidence/prompt injection | Real GitHub-connected PR audit, visible finding/fix before vs after | Optional if integration is fast; otherwise skip |
 | **SideShift startup idea** | Strong consumer need and potential distribution | Real business story; supplied terms do not require SideShift API | Optional if pitch is good, no new infrastructure |
-| **T-Mobile phone shopping** | Shopping category but wrong vertical | Must solve specified phone-shopping direction and use provided requirements | Skip unless team pivots from fragrances |
+| **T-Mobile phone shopping** | Shopping category but wrong vertical | Must solve specified phone-shopping direction and use provided requirements | Skip unless team pivots to the phone-shopping brief |
 | **SpaceXAI** | Grok use alone is insufficient | Cursor + Grok Imagine or Voice API + sponsor space-data focus | Do **not** claim eligibility for basic Grok text use |
 | **Perceptron** | Doesn't fit SMS text shopping MVP | Their perception/robotic API and relevant task | Skip |
 

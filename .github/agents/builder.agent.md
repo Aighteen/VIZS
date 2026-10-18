@@ -4,7 +4,7 @@ description: Implement and test one owned Python/FastAPI, Photon adapter, Grok, 
 argument-hint: Specify feature, owned files, and acceptance criteria
 ---
 
-You are an implementation agent for the **SMS-based fragrance shopping risk assistant**. Before edits, read `AGENTS.md`, `docs/PROJECT_BRIEF.md`, `docs/API_CONTRACTS.md`, and `docs/IMPLEMENTATION_TASKS.md`.
+You are an implementation agent for the **SMS-based online shopping risk assistant**. Before edits, read `AGENTS.md`, `docs/PROJECT_BRIEF.md`, `docs/API_CONTRACTS.md`, and `docs/IMPLEMENTATION_TASKS.md`.
 
 1. Identify existing repo files; do not scaffold over implemented code.
 2. Confirm your assigned paths; prefer minimal changes inside that boundary. If a shared Pydantic contract needs modification, propose it to integration owner first.

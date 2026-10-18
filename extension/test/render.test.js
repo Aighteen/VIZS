@@ -54,7 +54,7 @@ test("conflict panel renders both quotes, open by default, each with its source 
   const quotes = conflict.querySelectorAll("blockquote").map((q) => q.textContent);
   assert.deepEqual(quotes, ["Free returns.", "US customers pay return shipping."]);
   const hrefs = conflict.querySelectorAll("a").map((a) => a.getAttribute("href"));
-  assert.deepEqual(hrefs, ["https://shop.synthetic.example/perfume", "https://shop.synthetic.example/returns"]);
+  assert.deepEqual(hrefs, ["https://shop.synthetic.example/product", "https://shop.synthetic.example/returns"]);
   assert.ok(conflict.textContent.includes("Unverified source"));
   assert.ok(panel.textContent.includes("SIMULATION"));
 });

@@ -4,7 +4,7 @@ Approved direction: the user wants both Photon messaging and a Chrome extension 
 
 ## Product and first release
 
-A fragrance shopper opens a listing, activates the extension, and clicks the pet's "Check seller" action. The extension submits the current page URL and an optional user-confirmed price. The backend returns seller risk, buying advice, relevant source links, missing information and an optional `promise_sheet` with quote-validated shipping, arrival and returns rows plus domain/image context (image is always unavailable). See CREDIBILITY_CHECKING.md and API_CONTRACTS.md. Clicking the pet opens a compact on-page result panel. Fragrances remain the supported product category.
+An online shopper opens a product listing, activates the extension, and clicks the pet's "Check seller" action. The extension submits the current page URL and an optional user-confirmed price. The backend returns seller risk, buying advice, relevant source links, missing information and an optional `promise_sheet` with quote-validated shipping, arrival and returns rows plus domain/image context (image is always unavailable). See CREDIBILITY_CHECKING.md and API_CONTRACTS.md. Clicking the pet opens a compact on-page result panel. Any product category is supported; testing so far has mostly used fragrance listings.
 
 The pet is the extension's own mascot. There is no required Codex API, ChatGPT Work Pets integration, or account connection. Its appearance is still to be chosen; a code-native simple mascot can be used first. Pet behavior communicates request progress, never seller trust before the assessment completes.
 
@@ -20,7 +20,7 @@ The existing backend returns a single final response and has no streaming phase 
 
 ## Photon journey and shared behavior
 
-A registered user sends a fragrance listing URL and optional price through Photon. The same Grok/Tavily/Python workflow returns the same risk policy, labeled sources and unknowns as the extension, formatted for a message. Maintain source/status clarity, bounded calls, duplicate protection and explicit failure handling. The pet is a browser UI; it does not need to appear in the phone conversation.
+A registered user sends a product listing URL and optional price through Photon. The same Grok/Tavily/Python workflow returns the same risk policy, labeled sources and unknowns as the extension, formatted for a message. Maintain source/status clarity, bounded calls, duplicate protection and explicit failure handling. The pet is a browser UI; it does not need to appear in the phone conversation.
 
 P0 includes a reproducible Photon launch/stop flow and verified inbound/reply behavior alongside the extension UI. Existing proof is iMessage; do not call it SMS. Public hosting, a persistent listener and a verified FastAPI callback remain unfinished. Shared assessment logic is required; cross-channel account linking, history synchronization and automatic forwarding between channels are not required.
 
@@ -45,7 +45,7 @@ Photon messaging is a core product channel alongside the extension. Existing Spe
 
 ## Deferred or excluded
 
-After P0 only: exact-match pricing, card rewards using non-sensitive labels, DETAILS/history, pet cosmetics or multiple pets, other browsers/categories, richer genuine progress signals. Excluded: autonomous checkout/payment, PAN/CVV/banking linkage, authenticity certainty or fraud probabilities, massive scraping, multi-agent infrastructure. No browser-store publication or deployment is authorized by this scope update.
+After P0 only: exact-match pricing, card rewards using non-sensitive labels, DETAILS/history, pet cosmetics or multiple pets, other browsers, richer genuine progress signals. Excluded: autonomous checkout/payment, PAN/CVV/banking linkage, authenticity certainty or fraud probabilities, massive scraping, multi-agent infrastructure. No browser-store publication or deployment is authorized by this scope update.
 
 ## Ownership and next implementation tasks
 

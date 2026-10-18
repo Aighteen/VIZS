@@ -8,7 +8,7 @@ Manifest V3, plain JS/HTML/CSS. No bundler, no framework, no runtime dependencie
 2. Chrome: open `chrome://extensions`, turn on Developer mode, click **Load unpacked** and pick this `extension/` folder.
 3. Open the extension's **Details → Extension options**. Paste the `VIZS_EXTENSION_TOKEN` value and keep the backend URL `http://127.0.0.1:8000`. Save.
 4. The options page shows this extension's origin, `chrome-extension://<id>`. Add it to `VIZS_EXTENSION_ORIGINS` in the root `.env` (comma-separated) and restart the backend. Without it, the backend answers 403 for requests that carry that Origin.
-5. Open a fragrance listing and click the VIZS toolbar button. The pet appears; click **Check seller**.
+5. Open a product listing and click the VIZS toolbar button. The pet appears; click **Check seller**.
 
 ## Design
 
@@ -18,7 +18,7 @@ Manifest V3, plain JS/HTML/CSS. No bundler, no framework, no runtime dependencie
 - **States:** idle → searching ("Checking seller…" for the whole request; there is no fake phase or percentage) → finished (bubble opens the panel) or error (puzzled pet, message, explicit **Retry**, plus **Open settings** for pairing problems). INSUFFICIENT_EVIDENCE is a finished result, not an error.
 - **One request per tab.** The worker reserves the slot before any await, so repeated clicks are ignored. Dismissal, navigation (`tabs.onUpdated`, SPA URL polling in the page, or a tab URL that no longer matches when the result arrives) and request-id mismatches all discard the result. Dismissing aborts the client fetch, but already-started backend/provider work is not reversed, and the UI says so.
 - **Safe rendering.** Everything is built with `createElement`/`textContent`; there is no `innerHTML` anywhere in `src/` (enforced by tests). Links must be `http:`/`https:` and are checked twice (worker view-model and content renderer). They open with `target=_blank rel="noopener noreferrer"`. Sources that are not `verified_fact` evidence, and promise quotes that do not come from the merchant's own page, carry the label "Unverified source". Mock data shows a SIMULATION banner.
-- **Pet:** a code-native SVG perfume-bottle mascot in a closed Shadow DOM, styled through a constructable stylesheet. You can drag it with the pointer or move it with the arrow keys (Shift for bigger steps) while it is focused. The × button dismisses it. Focus is visible. `prefers-reduced-motion` makes the pet static. Only the pet position is stored, through the worker; no browsing history is kept.
+- **Pet:** a code-native SVG product-bottle mascot in a closed Shadow DOM, styled through a constructable stylesheet. You can drag it with the pointer or move it with the arrow keys (Shift for bigger steps) while it is focused. The × button dismisses it. Focus is visible. `prefers-reduced-motion` makes the pet static. Only the pet position is stored, through the worker; no browsing history is kept.
 
 ## Layout
 

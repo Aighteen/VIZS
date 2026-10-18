@@ -211,7 +211,7 @@ test("QA EXT-05: dismissal aborts the fetch and a late result is never delivered
 });
 
 test("QA EXT-05: navigation during the request (including hash/SPA URL change) drops the result", async () => {
-  for (const next of [LISTING + "#reviews", "https://shop.synthetic.example/perfume?id=2", undefined]) {
+  for (const next of [LISTING + "#reviews", "https://shop.synthetic.example/product?id=2", undefined]) {
     const t = setup();
     await t.handle({ type: "check" });
     t.setTab(next);

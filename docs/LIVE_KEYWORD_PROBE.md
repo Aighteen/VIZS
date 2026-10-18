@@ -4,7 +4,7 @@
 
 ## Authorized scope and observed results
 
-The user authorized a small live Grok/Tavily keyword search and sending its result via Photon to the registered phone. This is a one-off general-keyword integration probe; the fragrance product-URL assessment endpoint was not used or generalized. No seller credibility or authenticity conclusion was generated.
+The user authorized a small live Grok/Tavily keyword search and sending its result via Photon to the registered phone. This is a one-off general-keyword integration probe; the product-URL assessment endpoint was not used or generalized. No seller credibility or authenticity conclusion was generated.
 
 - Exactly one Grok Chat Completions request: HTTP 200; schema-validated query Snowboard / intent keyword_search. Configured model/key loaded locally, no secret values displayed.
 - Exactly one Tavily basic search through the existing TavilyProvider: three normalized records. No direct webpage fetches. Search snippets remain unverified.
@@ -25,4 +25,4 @@ Executed a temporary Python async probe using the existing project venv: one fix
 
 ## Next step
 
-Confirm handset receipt, then verify the actual fragrance product-URL runtime end to end separately. Keyword probe success does not establish Grok support for the larger OrchestratorPlan schema, useful seller evidence, or working FastAPI Photon webhook. Default application configuration remains offline; this probe did not edit .env or enable continuous paid calls.
+Confirm handset receipt, then verify the actual product-URL runtime end to end separately. Keyword probe success does not establish Grok support for the larger OrchestratorPlan schema, useful seller evidence, or working FastAPI Photon webhook. Default application configuration remains offline; this probe did not edit .env or enable continuous paid calls.

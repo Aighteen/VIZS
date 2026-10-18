@@ -15,7 +15,7 @@ if (!backend.ok || !/^http:\/\/(127\.0\.0\.1|localhost):/.test(backend.value)) {
   console.error("Smoke test only runs against a loopback backend.");
   process.exit(2);
 }
-const listing = "https://shop.synthetic.example/perfume"; // SYNTHETIC listing URL
+const listing = "https://shop.synthetic.example/product"; // SYNTHETIC listing URL
 
 const health = await (await fetch(backend.value + "/healthz")).json();
 console.log("healthz:", JSON.stringify(health));

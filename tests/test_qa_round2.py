@@ -109,11 +109,11 @@ def test_QA02_internationalized_bare_domains_are_neutralized(injected):
 @pytest.mark.parametrize("message,expected", [
     ("Check (https://synthetic-shop.com/p).", "https://synthetic-shop.com/p"),
     ("Check https://synthetic-shop.com/p).", "https://synthetic-shop.com/p"),
-    ("Is https://synthetic-shop.com/Perfume_(100ml)?", "https://synthetic-shop.com/Perfume_(100ml)"),
+    ("Is https://synthetic-shop.com/Product_(100ml)?", "https://synthetic-shop.com/Product_(100ml)"),
     ("Is https://synthetic-shop.com/a_(b)_(c) ok", "https://synthetic-shop.com/a_(b)_(c)"),
     ('Check "https://synthetic-shop.com/p".', "https://synthetic-shop.com/p"),
     ("Check https://synthetic-shop.com/p.\nThanks", "https://synthetic-shop.com/p"),
-    ("Check this listing https://synthetic-shop.com/perfume. price $20", "https://synthetic-shop.com/perfume."),
+    ("Check this listing https://synthetic-shop.com/product. price $20", "https://synthetic-shop.com/product."),
 ])
 def test_QA03_documented_trim_rule_holds_for_adversarial_prose(message, expected):
     assert _provided_urls(message) == {expected}
@@ -126,7 +126,7 @@ def test_QA03_seller_subdomain_vs_lookalike_are_distinct_urls():
 # Exact message_text strings extension/src/lib/request.js builds (checked on the node side
 # in extension/test/qa-round2.test.js). The listing href is the tab URL as Chrome reports it.
 EXTENSION_END_PUNCTUATION = [
-    ("https://synthetic-shop.com/perfume.", None),
+    ("https://synthetic-shop.com/product.", None),
     ("https://synthetic-shop.com/p?", None),
     ("https://synthetic-shop.com/p?", "$20"),
     ("https://synthetic-shop.com/sale!", None),
@@ -252,7 +252,7 @@ def test_Q2_extraction_failure_with_url_never_asks_to_resend(plan, path):
     headers = {"Authorization": f"Bearer {TOKEN}"} if "extension" in path else {}
     body = harness.post(path=path, headers=headers).json()
     message = body["message_text"].lower()
-    assert "send the fragrance listing url" not in message and "resend" not in message
+    assert "send the product listing url" not in message and "resend" not in message
     assert "try again later" in message
     assert body["assessment"]["decision"] == "NEED_MORE_INFORMATION"
     assert XAI_KEY not in json.dumps(body)
@@ -266,7 +266,7 @@ def test_Q2_missing_or_ambiguous_url_still_asks_for_one(text):
 
 def test_Q2_offline_mode_with_url_says_try_later():
     body = Harness(settings=Settings()).post().json()
-    assert "send the fragrance listing url" not in body["message_text"].lower()
+    assert "send the product listing url" not in body["message_text"].lower()
     assert "try again later" in body["message_text"].lower()
 
 
@@ -279,7 +279,7 @@ def origin_status(quote):
     return [r.status for r in validate_promise_sheet(sheet, sheet.sources).records]
 
 
-@pytest.mark.parametrize("quote", ["Synthetic Perfume LLC, 100 Pike Street, Seattle, WA 98101.",
+@pytest.mark.parametrize("quote", ["Synthetic Product LLC, 100 Pike Street, Seattle, WA 98101.",
                                    "Visit our Seattle boutique.", "Made in France.", "Based in New Jersey since 1999."])
 def test_Q4_address_or_location_without_origin_wording_is_not_disclosed(quote):
     assert origin_status(quote) == ["not_disclosed"]
@@ -300,7 +300,7 @@ def test_Q4_origin_wording_must_be_whole_words(quote):
 
 
 def test_Q4_downgraded_origin_reaches_phone_as_not_disclosed_without_address():
-    quote = "Synthetic Perfume LLC, 100 Pike Street, Seattle, WA 98101."
+    quote = "Synthetic Product LLC, 100 Pike Street, Seattle, WA 98101."
     sheet = PromiseSheet.model_validate({"seller_domain": SELLER, "sources": [source("a", LISTING, quote)],
                                          "records": [row("shipping_origin", "supported_as_statement", [("a", quote)], statement=quote)]})
     text = format_sms(base_assessment(promise_sheet=validate_promise_sheet(sheet, sheet.sources)))

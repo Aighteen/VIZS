@@ -6,7 +6,7 @@ import { buildEvaluateRequest, buildMessageText, listingUrlFromSender } from "..
 
 // Must match tests/test_qa_round2.py::EXTENSION_END_PUNCTUATION and extension_message().
 const END_PUNCTUATION = [
-  ["https://synthetic-shop.com/perfume.", null],
+  ["https://synthetic-shop.com/product.", null],
   ["https://synthetic-shop.com/p?", null],
   ["https://synthetic-shop.com/p?", "$20"],
   ["https://synthetic-shop.com/sale!", null],

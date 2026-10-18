@@ -16,7 +16,7 @@ from app.models import Assessment, Decision
 # all-Unicode TLDs such as ".рф". Labels may be Unicode (IDN homoglyphs) and the
 # ideographic/fullwidth dots count as dots. So "2-3 days.Free returns",
 # "Dr.Smith" and "No.5" survive. Accepted residual false positives: prose whose
-# suffix happens to be a real TLD, e.g. "Eau.de Parfum" (.de) or "50ml.It ships"
+# suffix happens to be a real TLD, e.g. "Haus.de Edition" (.de) or "50ml.It ships"
 # (.it), is still replaced; safety wins over prose fidelity.
 _GENERIC_TLDS = frozenset("""
     com net org edu gov mil int info biz name pro mobi asia tel travel jobs aero coop museum
@@ -68,7 +68,7 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
     labels = {Decision.CONSIDER_BUYING: "Consider buying after checking listing and return terms.",
               Decision.AVOID: "Avoid this purchase: substantial adverse findings.",
               Decision.VERIFY_FIRST: "Seller authorization unconfirmed. Verify authorization and return terms before buying.",
-              Decision.NEED_MORE_INFORMATION: "Send the fragrance listing URL and product context."}
+              Decision.NEED_MORE_INFORMATION: "Send the product listing URL and product context."}
     if assessment.decision == Decision.NEED_MORE_INFORMATION and URL_REQUEST not in assessment.missing_information:
         # The user supplied a URL, but extraction was unavailable, timed out or
         # returned invalid output: do not ask for the URL again (Q2).

@@ -2,7 +2,7 @@ HISTORICAL: original SMS-first planning prompt from the start of the hackathon. 
 
 I am working with a team at DubHacks 2026. Act as a senior Python/FastAPI systems architect and hackathon tech lead. THIS IS A PLANNING REQUEST ONLY: inspect this repository, read root AGENTS.md and docs/PROJECT_BRIEF.md, docs/ARCHITECTURE.md, docs/API_CONTRACTS.md, docs/IMPLEMENTATION_TASKS.md, docs/SPRINT_PLAN.md, docs/TRACK_DECISION.md and docs/SUBMISSION_CHECKLIST.md. DO NOT modify source code, create files, install dependencies, deploy, or use paid APIs during this planning pass.
 
-PRODUCT: Build an SMS-first, evidence-based AI shopping decision assistant for online fragrances. Example user text: "Is this perfume legit? https://example.com/perfume/123 — it costs $150. What should I do?" It should return an explainable seller-risk classification, buying recommendation, and concise source links via Photon 2.0 SMS. Core value: know whether the seller is credible, whether the price is reasonable, and which card provides the best value (the last two are P1 after P0). The user journey must actually work.
+PRODUCT: Build an SMS-first, evidence-based AI shopping decision assistant for online shopping. Example user text: "Is this product legit? https://example.com/product/123 — it costs $150. What should I do?" It should return an explainable seller-risk classification, buying recommendation, and concise source links via Photon 2.0 SMS. Core value: know whether the seller is credible, whether the price is reasonable, and which card provides the best value (the last two are P1 after P0). The user journey must actually work.
 
 EXPECTED P0 PIPELINE:
 1. Receive SMS via Photon 2.0 Beta (actual payload/signature/send endpoint must be verified against our account docs).
@@ -15,7 +15,7 @@ EXPECTED P0 PIPELINE:
 
 PROPOSED STACK: Python 3.11+, FastAPI, Pydantic, pytest; Grok orchestrator; Tavily OR Grok Web Search; Photon 2.0 adapter; no mandatory UI. No Redis/Postgres/Celery until justified. Expose POST /api/v1/evaluate as a local debug path using the SAME core pipeline, plus POST /webhooks/photon as a vendor adapter and GET /healthz. Avoid vendor payload guesses or fabricated webhook signatures. Credentials must stay server-side. Defend against prompt injection in retrieved sites, SSRF via arbitrary URLs/private IP/redirects, duplicated messages, missing source evidence and slow API calls.
 
-P1 AFTER P0: compare exact same fragrance by concentration/size/edition with cited merchant prices; deterministic card rewards from manually entered card types (no PAN, CVV or banking passwords). Response may support "DETAILS" with sources. Larger multi-agent orchestration, real database, Visa TAP, auto-pay and calibrated fraud probabilities are not part of MVP.
+P1 AFTER P0: compare the exact same product by variant/size/edition with cited merchant prices; deterministic card rewards from manually entered card types (no PAN, CVV or banking passwords). Response may support "DETAILS" with sources. Larger multi-agent orchestration, real database, Visa TAP, auto-pay and calibrated fraud probabilities are not part of MVP.
 
 TRACKS: Recommend VISA: Reimagine Shopping title track; Photon 2.0 sponsored side track only if built on Photon 2.0 and demonstrated on a live supported channel. Other sponsor tracks require their own evidence. Humans finalize the track selections.
 

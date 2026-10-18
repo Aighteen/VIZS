@@ -6,11 +6,11 @@ from app.decision import decide
 
 @pytest.fixture
 def request_data():
-    return ShoppingRequest(request_id='x',message_text='https://shop.example/perfume')
+    return ShoppingRequest(request_id='x',message_text='https://shop.example/product')
 
 @pytest.fixture
 def plan():
-    return OrchestratorPlan(request_id='x',intent='evaluate_purchase',product_url='https://shop.example/perfume',data_mode='mock')
+    return OrchestratorPlan(request_id='x',intent='evaluate_purchase',product_url='https://shop.example/product',data_mode='mock')
 
 @pytest.fixture
 def official():

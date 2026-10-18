@@ -16,7 +16,7 @@ from app.models import Assessment, Evidence, OrchestratorPlan, PromiseSheet, Ris
 from app.services.grok import _provided_urls
 from tests.test_qa_acceptance import SELLER, URL_RE, base_assessment, row, source
 
-LISTING = f"https://{SELLER}/perfume/qa"
+LISTING = f"https://{SELLER}/product/qa"
 PAYLOAD = {"request_id": "qa-fix", "message_text": f"Check {LISTING}", "channel": "debug"}
 TOKEN = "qa-synthetic-pairing-token"
 ORIGIN = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
@@ -106,7 +106,7 @@ def test_Q2_extraction_failure_with_url_says_try_later_not_send_url(make_app):
     text = body["message_text"]
     assert body["assessment"]["decision"] == "NEED_MORE_INFORMATION"
     assert "could not be completed" in text and "try again later" in text
-    assert "Send the fragrance listing URL" not in text
+    assert "Send the product listing URL" not in text
     assert "listing URL" not in text and "resend" not in text.lower()
     assert len(text) <= 1000
 
@@ -114,7 +114,7 @@ def test_Q2_extraction_failure_with_url_says_try_later_not_send_url(make_app):
 def test_Q2_no_url_still_asks_for_url():
     with TestClient(create_app(settings=Settings())) as client:
         body = client.post("/api/v1/evaluate-message",
-                           json={**PAYLOAD, "message_text": "Is this perfume legit?"}).json()
+                           json={**PAYLOAD, "message_text": "Is this product legit?"}).json()
     text = body["message_text"]
     assert body["assessment"]["decision"] == "NEED_MORE_INFORMATION"
     assert "listing URL" in text
@@ -122,13 +122,13 @@ def test_Q2_no_url_still_asks_for_url():
 
 
 def test_Q2_formatter_asks_for_url_only_when_url_is_missing():
-    asking = base_assessment(decision="NEED_MORE_INFORMATION", summary="Send the fragrance listing URL.",
-                             missing_information=["Fragrance listing URL and product context"])
+    asking = base_assessment(decision="NEED_MORE_INFORMATION", summary="Send the product listing URL.",
+                             missing_information=["Product listing URL and context"])
     failed = base_assessment(decision="NEED_MORE_INFORMATION", summary="Shopping extraction timed out.",
                              missing_information=["Shopping extraction timed out."])
-    assert "Send the fragrance listing URL" in format_sms(asking)
+    assert "Send the product listing URL" in format_sms(asking)
     assert "could not be completed" in format_sms(failed)
-    assert "Send the fragrance listing URL" not in format_sms(failed)
+    assert "Send the product listing URL" not in format_sms(failed)
 
 
 # ---------------------------------------------------------------- Q4 shipping origin
@@ -205,8 +205,8 @@ def test_QA02_link_like_text_in_quotes_and_conditions_is_neutralized(injected):
     ("Check https://x-shop.com/p. Is it legit?", "https://x-shop.com/p"),
     ("Check https://x-shop.com/p, thanks", "https://x-shop.com/p"),
     ("(see https://x-shop.com/p)", "https://x-shop.com/p"),
-    ("Is https://en.x-shop.com/wiki/Perfume_(100ml) legit?", "https://en.x-shop.com/wiki/Perfume_(100ml)"),
-    ("Is https://en.x-shop.com/wiki/Perfume_(100ml). ok", "https://en.x-shop.com/wiki/Perfume_(100ml)."),
+    ("Is https://en.x-shop.com/wiki/Product_(100ml) legit?", "https://en.x-shop.com/wiki/Product_(100ml)"),
+    ("Is https://en.x-shop.com/wiki/Product_(100ml). ok", "https://en.x-shop.com/wiki/Product_(100ml)."),
     ("Check 'https://x-shop.com/p'", "https://x-shop.com/p"),
     ("Check https://x-shop.com/it's-50ml!", "https://x-shop.com/it's-50ml"),
 ])

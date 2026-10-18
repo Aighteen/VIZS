@@ -116,7 +116,7 @@ import httpx
 from app.models import Assessment
 
 
-PAYLOAD = {"request_id": "runtime-test", "message_text": "Check https://shop.example.com/perfume $100"}
+PAYLOAD = {"request_id": "runtime-test", "message_text": "Check https://shop.example.com/product $100"}
 
 
 def runtime_app(*, provider_error=None, search_results=None, enable_mock=False):
@@ -130,7 +130,7 @@ def runtime_app(*, provider_error=None, search_results=None, enable_mock=False):
         if provider_error == "grok_bad_json":
             return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "bad json"}}]})
         content = json.dumps({"request_id": "backend", "intent": "evaluate_purchase",
-            "product_url": "https://shop.example.com/perfume", "purchase_price": "100.00",
+            "product_url": "https://shop.example.com/product", "purchase_price": "100.00",
             "tasks": [{"kind": "verify_seller", "query": "untrusted model query"}]})
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": content}}]})
 
@@ -238,7 +238,7 @@ def app_transport(calls):
     def complete(request):
         calls.append("grok")
         content = json.dumps({"request_id": "backend", "intent": "evaluate_purchase",
-                 "product_url": "https://shop.example.com/perfume",
+                 "product_url": "https://shop.example.com/product",
                  "tasks": [{"kind": "verify_seller", "query": "seller"}]})
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": content}}]})
     return httpx.MockTransport(complete)
@@ -415,7 +415,7 @@ def test_end_to_end_promise_conflict_shared_by_extension_and_phone():
             name=payload["response_format"]["json_schema"]["name"]
             calls.append(name)
             if name=="shopping_plan":
-                body={"request_id":"backend","intent":"evaluate_purchase","product_url":"https://shop.com/perfume","tasks":[{"kind":"verify_seller","query":"shop.com"}]}
+                body={"request_id":"backend","intent":"evaluate_purchase","product_url":"https://shop.com/product","tasks":[{"kind":"verify_seller","query":"shop.com"}]}
             else:
                 body={"records":[{"topic":"return_cost","status":"conflicting","merchant_statement":"Free returns.","explanation":"Guaranteed scam with a $25 return cost.","quotes":[{"source_id":"source_1","quote":"Free returns."},{"source_id":"source_2","quote":"US customers pay return shipping."}],"conditions":{"region":"US","eligibility":"Unopened items within 30 days."}}]}
             return httpx.Response(200,json={"choices":[{"finish_reason":"stop","message":{"content":json.dumps(body)}}]})
@@ -423,14 +423,14 @@ def test_end_to_end_promise_conflict_shared_by_extension_and_phone():
             calls.append(path)
             if path=="/search":return httpx.Response(200,json={"results":[{"url":"https://shop.com/returns","title":"Returns","content":"shop.com returns policy"}]})
             assert path=="/extract"
-            return httpx.Response(200,json={"results":[{"url":"https://shop.com/perfume","raw_content":"Free returns. US customers only."},{"url":"https://shop.com/returns","raw_content":"US customers pay return shipping. Unopened items within 30 days."}]})
+            return httpx.Response(200,json={"results":[{"url":"https://shop.com/product","raw_content":"Free returns. US customers only."},{"url":"https://shop.com/returns","raw_content":"US customers pay return shipping. Unopened items within 30 days."}]})
         assert host=="rdap.verisign.com"
         calls.append("rdap")
         return httpx.Response(200,json={"ldhName":"shop.com","events":[{"eventAction":"registration","eventDate":"2020-01-01T00:00:00Z"}]})
     async def destination(url):return url
     transport=httpx.MockTransport(handler)
     app=create_app(settings=Settings(provider_mode="live",xai_api_key="synthetic",xai_model="synthetic",tavily_api_key="synthetic",extension_token="paired"),xai_transport=transport,tavily_transport=transport,domain_transport=transport,destination_validator=destination)
-    payload={"request_id":"promise-test","message_text":"Check https://shop.com/perfume","channel":"debug"}
+    payload={"request_id":"promise-test","message_text":"Check https://shop.com/product","channel":"debug"}
     with TestClient(app) as client:
         ext=client.post("/api/v1/extension/evaluate",json=payload,headers={"Authorization":"Bearer paired"})
         assert ext.status_code==200

@@ -141,7 +141,7 @@
     return panel;
   }
 
-  /** Code-native mascot: a small perfume-bottle character. No external assets. */
+  /** Code-native mascot: a small round-bottle mascot. No external assets. */
   function renderMascot(doc) {
     return svg(doc, "svg", { class: "mascot", viewBox: "0 0 64 64", "aria-hidden": "true", focusable: "false" }, [
       svg(doc, "g", { class: "body-group" }, [

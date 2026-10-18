@@ -1,6 +1,6 @@
 ---
 name: dubhacks-planning
-description: Create or revise a deadline-driven, implementation-ready engineering plan for this DubHacks 2026 Photon + Grok + FastAPI fragrance shopping assistant. Use when deciding MVP scope, interfaces, parallel tasks, integration fallbacks or demo readiness.
+description: Create or revise a deadline-driven, implementation-ready engineering plan for this DubHacks 2026 Photon + Grok + FastAPI online shopping assistant. Use when deciding MVP scope, interfaces, parallel tasks, integration fallbacks or demo readiness.
 argument-hint: State the desired plan update or current blocker
 user-invocable: true
 disable-model-invocation: true

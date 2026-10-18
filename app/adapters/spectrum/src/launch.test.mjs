@@ -168,14 +168,14 @@ test("--live is passed only when requested and verified via healthz", async () =
 
 test("secrets, phone numbers and message text never appear in output", async () => {
   const h = harness({ onBridge: (b) => {
-    b.stdout.write(`READY: ok\nincoming text from ${SECRETS.VIZS_REGISTERED_RECIPIENT}: buy this perfume\nREPLY_FAILED ${SECRETS.PROJECT_SECRET}\n`);
+    b.stdout.write(`READY: ok\nincoming text from ${SECRETS.VIZS_REGISTERED_RECIPIENT}: buy this product\nREPLY_FAILED ${SECRETS.PROJECT_SECRET}\n`);
     b.stderr.write(`Error: auth failed for ${SECRETS.PROJECT_ID}\n`);
     setImmediate(() => b.exit(0));
   } });
   assert.equal(await run([], h.deps), EXIT.ok);
   const text = h.text();
   for (const value of Object.values(SECRETS)) assert.ok(!text.includes(value));
-  assert.ok(!text.includes("buy this perfume"));
+  assert.ok(!text.includes("buy this product"));
   assert.match(text, /PROJECT_SECRET=present/);
   assert.match(text, /3 non-status bridge line\(s\) suppressed/);
   for (const call of h.calls) for (const value of Object.values(SECRETS)) assert.ok(!call.args.join(" ").includes(value));
