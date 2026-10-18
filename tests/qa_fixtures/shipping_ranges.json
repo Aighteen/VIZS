@@ -1,0 +1,35 @@
+{
+  "label": "SYNTHETIC QA fixture (PROM-02): processing and transit ranges; not real research",
+  "sheet": {
+    "seller_domain": "synthetic-shop.com",
+    "sources": [
+      {
+        "source_id": "shipping",
+        "url": "https://synthetic-shop.com/shipping",
+        "retrieved_at": "2026-10-17T12:00:00Z",
+        "content": "Orders are processed in 1-2 business days. Standard delivery takes 3-7 business days within the US after dispatch. Delivery times are estimates.",
+        "content_kind": "merchant_page",
+        "seller_domain": "synthetic-shop.com",
+        "data_mode": "mock"
+      }
+    ],
+    "records": [
+      {
+        "topic": "processing_time",
+        "status": "supported_as_statement",
+        "merchant_statement": "Orders are processed in 1-2 business days.",
+        "explanation": "Guaranteed to ship tomorrow.",
+        "quotes": [{"source_id": "shipping", "quote": "Orders are processed in 1-2 business days."}],
+        "conditions": {"time": "1-2 business days"}
+      },
+      {
+        "topic": "transit_time",
+        "status": "supported_as_statement",
+        "merchant_statement": "Standard delivery takes 3-7 business days within the US after dispatch.",
+        "explanation": "Arrives by Friday, guaranteed.",
+        "quotes": [{"source_id": "shipping", "quote": "Standard delivery takes 3-7 business days within the US after dispatch."}],
+        "conditions": {"region": "US", "time": "3-7 business days"}
+      }
+    ]
+  }
+}
