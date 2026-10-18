@@ -68,7 +68,7 @@ This file begins as a test plan. Append actual commit, command, output and IDs c
 
 - Command: `python -m pytest -q -p no:cacheprovider` in a fresh macOS Python 3.14 venv with the `pyproject.toml` dependencies => **159 passed**, one Starlette/httpx deprecation warning.
 - Node bridge suite not run (Node not installed on that machine); last recorded result 4 passed on Windows.
-- Gates: G1 and G2 have automated coverage. G3 is partial: extension access controls are tested, but no extension client or Photon launcher exists. G4 and G5 are not started for the new features.
+- Gates: G1 and G2 have automated coverage. G3 was partial at this point (later merges below add the launcher and extension). G4 and G5 are not started for the new features.
 - Automated cases with named tests (others not mapped in this pass):
   - PROM-01: `tests/test_policy.py::test_promise_conflict_preserves_risk_and_both_quotes`, `tests/test_sms.py::test_promise_conflict_phone_output_retains_both_quotes_and_links`
   - PROM-04/05: `tests/test_policy.py::test_promise_missing_and_unavailable_are_distinct`, `tests/test_grok.py::test_promise_extraction_missing_client_or_sources_unavailable_not_absent`
@@ -77,4 +77,14 @@ This file begins as a test plan. Append actual commit, command, output and IDs c
   - API-01: `tests/test_api.py::test_extension_pairing_and_origin_before_paid_calls`, `test_extension_unconfigured_and_rate_budget`
   - API-02: `tests/test_api.py::test_extension_concurrent_budget_releases_after_error`, `test_extension_unconfigured_and_rate_budget`
   - OUT-03: `tests/test_api.py::test_end_to_end_promise_conflict_shared_by_extension_and_phone`
-- Pending: all EXT-*, PH-03, LIVE-01, and a PH-04 re-run with the promise sheet.
+- Pending: all EXT-*, LIVE-01, and a PH-04 re-run with the promise sheet.
+
+### 2026-10-17, merge `9c293b8` (Photon launcher)
+
+- PH-03: `app/adapters/spectrum/src/launch.mjs`; `npm test` in `app/adapters/spectrum` => 21 passed (bridge 4 + launcher 17), re-run by the tech lead. Real offline `npm run shop:check` on macOS: API ready, clean stop, no leftover process or lock. Windows `taskkill` path untested; live run pending.
+
+### 2026-10-17, merge `3da454c` (Chrome extension)
+
+- `cd extension && node --test test/*.test.js` => 52 passed (re-run by the tech lead). Offline backend smoke (`extension/scripts/backend-smoke.mjs`): valid token 200, missing/wrong token 401, unlisted origin 403, 429 after five requests. Headless Chrome render check of idle/searching/finished/panel/hostile/error states (scratch harness, not committed).
+- Automated: EXT-01 (manifest/injection), EXT-02, EXT-03, EXT-04, EXT-05, EXT-07. Partial: EXT-06 (drag/keyboard movement not exercised).
+- Pending manual: unpacked install, service worker lifecycle over a long request, drag/keyboard, reduced motion on a real OS setting, phone-width layout. LIVE-01 pending.

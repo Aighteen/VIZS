@@ -6,7 +6,10 @@
   "scripts": {
     "start": "tsx --env-file=.env src/index.ts",
     "dev": "tsx watch --env-file=.env src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "shop": "node src/launch.mjs",
+    "shop:check": "node src/launch.mjs --check",
+    "test": "node --test src/bridge-handler.test.mjs src/launch.test.mjs"
   },
   "dependencies": {
     "@spectrum-ts/imessage": "^12.11.0",

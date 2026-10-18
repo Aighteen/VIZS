@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VIZS settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>VIZS seller check: settings</h1>
+    <p class="lead">Pair this extension with your local VIZS backend. The pairing token stays in this browser profile's extension storage and is only read by the extension's service worker, never by web pages.</p>
+
+    <form id="settings" novalidate>
+      <label for="backendUrl">Backend URL</label>
+      <input id="backendUrl" name="backendUrl" type="url" autocomplete="off" spellcheck="false" required>
+      <p class="help">Allowed: <code>http://127.0.0.1:&lt;port&gt;</code>, <code>http://localhost:&lt;port&gt;</code>, or an <code>https://</code> address. Default <code>http://127.0.0.1:8000</code>.</p>
+
+      <label for="token">Pairing token (<code>VIZS_EXTENSION_TOKEN</code>)</label>
+      <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" required>
+      <p class="help">Run <code>python -m app.workflow.dev_server --pair</code> in the backend checkout, then copy the value of <code>VIZS_EXTENSION_TOKEN</code> from the root <code>.env</code>.</p>
+
+      <div class="row">
+        <button type="submit">Save</button>
+        <button type="button" id="test">Check backend is running</button>
+        <button type="button" id="clear" class="secondary">Forget token</button>
+      </div>
+      <p id="message" role="status" aria-live="polite"></p>
+    </form>
+
+    <section>
+      <h2>Allow this extension on the backend</h2>
+      <p>Add this exact origin to <code>VIZS_EXTENSION_ORIGINS</code> in the backend's root <code>.env</code> (comma-separated) and restart the backend:</p>
+      <p><code id="origin"></code> <button type="button" id="copyOrigin" class="secondary">Copy</button></p>
+    </section>
+
+    <section>
+      <h2>What VIZS sends</h2>
+      <p>Only when you click <strong>Check seller</strong> on the pet: the address of the current tab and the optional price you typed. VIZS does not read page content, payment forms or your browsing history, and stores only these settings and the pet's position.</p>
+    </section>
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

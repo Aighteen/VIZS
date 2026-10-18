@@ -18,8 +18,8 @@ Checkpoint: `main` at `62f1ac8` ("Merge validated packet A integration"), Saturd
 
 ## Not done
 
-1. **Chrome extension / pet UI.** No `extension/` directory exists on `main` or any pushed branch. TECH_LEAD_PLAN.md assigned it to a local worktree (`feat/pet-extension`); if that work exists it has not been pushed or merged. Confirm with the team before starting fresh.
-2. **Reproducible Photon launch/stop.** `npm start` still runs the echo agent; the shopping path is `test-bridge.mjs` started by hand with environment variables. No committed launcher (ACCEPTANCE PH-03).
+1. **Chrome extension: built offline** (merged `3da454c`). 52 Node tests, real offline backend smoke test, headless Chrome render check. Still needed: manual install checks (see `extension/README.md`: unpacked load, duplicate clicks, navigation mid-request, drag/keyboard, reduced motion, 401/403), phone-width layout, toolbar icon.
+2. **Photon launch/stop: done offline.** `npm run shop` in `app/adapters/spectrum` starts the API and `test-bridge.mjs` together with a single-listener lock and clean shutdown (PH-03: 21 Node tests, macOS offline `shop:check` passed). Windows path and live run untested.
 3. **Live checks of new features.** One authorized live run through the extension (LIVE-01) and one through Photon with the promise sheet (PH-04 re-run). Requires explicit credit/message authorization.
 4. **SMS, FastAPI Photon webhook, public hosting, always-on listener.** Unverified; keep out of claims unless done.
 5. **Docs/video for submission.** Demo cases (credible evidence vs insufficient evidence), honest real-vs-fixture labeling, team contributions.
@@ -28,7 +28,7 @@ Checkpoint: `main` at `62f1ac8` ("Merge validated packet A integration"), Saturd
 
 1. Assign the frontend owner and writable path `extension/` (with its assets/tests). Build a Manifest V3 extension against offline fixtures: user activation only (`activeTab`), movable/dismissible pet, Check seller with editable optional price, idle/searching/finished/error states, result panel with risk, decision, summary, missing information, promise rows and up to two labeled links. Text-only rendering, keyboard access, reduced motion, no duplicate in-flight request, stale results cleared on navigation. Pairing token stored in extension storage; provider keys never in the client.
 2. Wire the extension to `http://127.0.0.1:8000/api/v1/extension/evaluate` with `channel: "debug"` and the price in `message_text`. Add the unpacked extension ID to `VIZS_EXTENSION_ORIGINS` (otherwise requests carrying an `Origin` header get 403).
-3. A: commit a launch/stop script for the API plus `test-bridge.mjs` (single listener, credentials from ignored env files), or make `test-bridge.mjs` the `npm` script; re-verify a registered-phone reply.
+3. A: re-verify a registered-phone reply with `npm run shop -- --live` once credentials are on this machine and the run is authorized.
 4. Run the automated EXT cases, then one authorized live extension run; record actual results in ACCEPTANCE_TESTS.md.
 
 ## Pet and evidence limits

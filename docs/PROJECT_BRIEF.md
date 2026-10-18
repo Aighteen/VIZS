@@ -1,6 +1,6 @@
 # Project brief - fragrance shopping assistant through Photon and an animated browser pet
 
-Current user-approved direction: both Photon messaging and a Chrome extension with an animated on-page shopping pet. They are core channels sharing the existing evidence-backed backend. See EXTENSION_SCOPE.md for acceptance criteria and boundaries and NEXT_STEPS.md for current status. The backend and extension route exist; the extension UI does not yet.
+Current user-approved direction: both Photon messaging and a Chrome extension with an animated on-page shopping pet. They are core channels sharing the existing evidence-backed backend. See EXTENSION_SCOPE.md for acceptance criteria and boundaries and NEXT_STEPS.md for current status. The backend, extension route and MV3 extension exist; live runs are pending.
 
 ## Credibility-checking update from the supplied Kept brief
 
@@ -22,7 +22,7 @@ Fragrance shoppers need to judge seller credibility without treating unknown sel
 
 A registered shopper messages a listing URL and optional price; Photon carries the assessment back with source links and uncertainty. It uses the same backend and decision policy as the extension. Preserve the confirmed iMessage flow; SMS and public/persistent deployment still need verification.
 
-## P0 - both channels (extension UI pending)
+## P0 - both channels
 
 - Reproducible Photon launch/stop, registered inbound evaluation and cited reply, with duplicate/failure handling.
 - Chrome extension with on-page pet and compact result panel.
@@ -35,7 +35,7 @@ A registered shopper messages a listing URL and optional price; Photon carries t
 
 ## Implemented foundation
 
-Packets A-D, runtime wiring, the promise sheet and the extension route are on `main` at `62f1ac8`. Last check: 159 Python tests passed (Oct 17); Node bridge suite last recorded 4 passed. Registered-phone iMessage -> Grok -> Tavily -> policy -> cited reply was confirmed received by the user (before the promise sheet). The extension UI is absent. Current snippets remain unverified; stronger official-source validation is still needed for useful stronger conclusions.
+Packets A-D, runtime wiring, the promise sheet and the extension route are on `main` at `62f1ac8`. Last check: 159 Python tests passed (Oct 17); Node bridge suite last recorded 4 passed. Registered-phone iMessage -> Grok -> Tavily -> policy -> cited reply was confirmed received by the user (before the promise sheet). The MV3 extension is merged at `3da454c` and offline-tested. Current snippets remain unverified; stronger official-source validation is still needed for useful stronger conclusions.
 
 ## Photon channel and deferred work
 
