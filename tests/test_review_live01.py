@@ -7,6 +7,8 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from app.decision.promises import validate_promise_sheet
+from app.models import PromiseSheet, PromiseSource
 from app.research.promise_extractor import PromiseExtractor, XAIPromiseCompletionClient
 from app.research.provider import SourceRecord
 from app.research.url_safety import same_page_key, strip_tracking
@@ -107,3 +109,42 @@ def test_promise_reader_transport_failures_are_distinguished(handler, expected):
     assert note.endswith(expected)
     for leaked in ("http", "SECRET", "lelabo", "rate limited", "synthetic"):
         assert leaked not in note.replace("(HTTP ", "")
+
+
+def test_oversize_reader_reply_is_invalid_not_a_crash():
+    note = _reader_note(lambda request: httpx.Response(200, content=b'{"choices": [' + b" " * 33000 + b"]}"))
+    assert note.endswith("promise reader output was invalid.")
+
+
+# Threat-model acceptance tests for the promise-reader fix (docs/reviews/
+# BRAND_DIRECT_THREAT_MODEL.md P4-P6). They document weaknesses verified on
+# 0cf68ed; strict xfail fails once fixed, so the fixer removes the marker.
+_POLICY = "Final sale. No returns. Ships in 30 business days from our warehouse. Prices in USD."
+
+
+def _kept(quote, region=None):
+    source = PromiseSource(source_id="source_1", url="https://shop.example.org/p", retrieved_at=datetime.now(timezone.utc),
+                           content=_POLICY, content_kind="merchant_page", seller_domain="shop.example.org", data_mode="mock")
+    sheet = PromiseSheet.model_validate({"seller_domain": "shop.example.org", "records": [
+        {"topic": "returns", "status": "supported_as_statement", "explanation": "x", "merchant_statement": quote,
+         "quotes": [{"source_id": "source_1", "quote": quote}], "conditions": {"region": region}}]})
+    return validate_promise_sheet(sheet, sources=[source], seller_domain="shop.example.org").records
+
+
+def test_exact_clause_quote_is_kept():
+    assert len(_kept("Ships in 30 business days from our warehouse.")) == 1
+
+
+@pytest.mark.xfail(strict=True, reason="P4: quote 'returns' from 'No returns.' drops the negation")
+def test_negation_dropping_quote_is_rejected():
+    assert _kept("returns") == []
+
+
+@pytest.mark.xfail(strict=True, reason="P5: any 1-character span is accepted as a quote")
+def test_trivial_quote_is_rejected():
+    assert _kept("e") == []
+
+
+@pytest.mark.xfail(strict=True, reason="P6: region 'US' matches inside 'USD'")
+def test_region_condition_needs_word_boundary():
+    assert _kept("Ships in 30 business days from our warehouse.", region="US") == []
