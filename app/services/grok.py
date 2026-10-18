@@ -43,12 +43,14 @@ class CompletionClient(Protocol):
 class XAICompletionClient:
     """Explicitly configured transport. Client lifetime belongs to the caller."""
 
-    def __init__(self, client: httpx.AsyncClient, *, api_key: str, model: str):
+    def __init__(self, client: httpx.AsyncClient, *, api_key: str, model: str, system_prompt: str = SYSTEM_PROMPT, schema_name: str = "shopping_plan"):
         if not api_key.strip() or not model.strip():
             raise ValueError("xAI key and model must be explicitly configured")
         self._client = client
         self._key = api_key
         self._model = model
+        self._system_prompt = system_prompt
+        self._schema_name = schema_name
 
     async def complete(self, message: str, schema: dict) -> str:
         # Fixed origin; no user-controlled endpoint, redirects, retries, or tools.
@@ -58,11 +60,11 @@ class XAICompletionClient:
             json={
                 "model": self._model,
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": self._system_prompt},
                     {"role": "user", "content": message},
                 ],
                 "response_format": {"type": "json_schema", "json_schema": {
-                    "name": "shopping_plan", "strict": True, "schema": schema,
+                    "name": self._schema_name, "strict": True, "schema": schema,
                 }},
                 "max_tokens": 1000,
                 "stream": False,

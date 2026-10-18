@@ -3,7 +3,7 @@
 Retrieved text stays quoted data. No instruction or model-generated claim is run.
 """
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -48,6 +48,7 @@ class ResearchResult:
     records_received: int = 0
     records_filtered: int = 0
     data_mode: str = "partial"
+    source_records: list[SourceRecord] = field(default_factory=list)
     uncertainty: str = "Search snippets are unverified; authorization, brand and region remain unconfirmed."
 
     def report(self) -> ResearchReport:
@@ -105,4 +106,5 @@ class SellerResearch:
                 evidence.append(item)
         status = "partial" if evidence else "filtered" if received else "empty"
         return ResearchResult(evidence, status, provider_called=True,
-                              records_received=received, records_filtered=received-len(evidence))
+                              records_received=received, records_filtered=received-len(evidence),
+                              source_records=list(records[:5]))
