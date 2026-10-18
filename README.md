@@ -3,6 +3,8 @@
 **Project:** SMS-first, evidence-backed shopping decision assistant for fragrance purchases.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent.
 **Status:** Planning/instructions only. This kit does **not** implement working Photon, Grok, or Tavily integrations.
+**Current phase:** Pre-implementation planning / contract gate.
+**Immediate team decision:** Lock title/sponsor track choices and confirm provider access/docs (Photon, Grok, and one research provider) before coding.
 
 ## Put these files in your repository
 
