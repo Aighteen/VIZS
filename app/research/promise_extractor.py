@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 from app.models import PromiseRecord, PromiseSheet, PromiseSource
-from app.services.grok import XAICompletionClient
+from app.services.grok import TruncatedResponse, XAICompletionClient
 from app.research.evidence import normalize_record
 from app.research.url_safety import UnsafeURL
 
@@ -28,7 +28,25 @@ class PromiseCandidates(BaseModel):
 
 class XAIPromiseCompletionClient(XAICompletionClient):
     def __init__(self, client, *, api_key, model):
-        super().__init__(client, api_key=api_key, model=model, system_prompt=PROMISE_PROMPT, schema_name="promise_records")
+        # Several rows of exact quotes do not fit the 1000-token plan budget (LIVE-01).
+        super().__init__(client, api_key=api_key, model=model, system_prompt=PROMISE_PROMPT,
+                         schema_name="promise_records", max_tokens=4000)
+
+
+# Privacy-safe stage notes: fixed wording and counts only, never URLs or page text.
+_EXTRACT_NOTES = {
+    "timeout": "page extract timed out",
+    "unavailable": "page extract unavailable",
+    "unsafe_url": "listing URL was not safe to extract",
+    "skipped": "page extract skipped",
+}
+
+
+def _extract_note(collection) -> str:
+    if collection.status in _EXTRACT_NOTES:
+        return _EXTRACT_NOTES[collection.status]
+    pages = sum(r.content_kind == "merchant_page" for r in collection.records)
+    return f"page extract returned {pages} of {collection.requested} pages"
 
 
 def source_registry(plan, records, *, data_mode="partial"):
@@ -54,11 +72,14 @@ class PromiseExtractor:
             raise ValueError("Invalid promise extraction configuration")
         self.client, self.timeout, self.data_mode = client, timeout_seconds, data_mode
 
-    async def extract(self, plan, records):
+    async def extract(self, plan, records, *, collection=None):
+        """``collection`` (live path only) adds stage diagnostics to unavailable rows."""
         from app.decision.promises import validate_promise_sheet
         registry = source_registry(plan, records, data_mode=self.data_mode)
         seller = urlsplit(str(plan.product_url)).hostname.lower().removeprefix("www.")
         sheet = PromiseSheet(seller_domain=seller, sources=registry)
+        proposed = None
+        reader = "promise reader not called (no merchant page retrieved)" if self.client is None else "promise reader not called (no usable sources)"
         if self.client is not None and registry:
             try:
                 async with asyncio.timeout(self.timeout):
@@ -67,10 +88,22 @@ class PromiseExtractor:
                     raise ValueError("Oversize promise output")
                 candidate = PromiseCandidates.model_validate_json(raw)
                 sheet = sheet.model_copy(update={"records": candidate.records})
-            except (ValueError, TypeError, KeyError, IndexError, httpx.HTTPError, TimeoutError):
-                pass
+                proposed = len(candidate.records)
+            except TimeoutError:
+                reader = "promise reader timed out"
+            except TruncatedResponse:
+                reader = "promise reader output was cut off"
+            except httpx.HTTPError:
+                reader = "promise reader request failed"
+            except (ValueError, TypeError, KeyError, IndexError):
+                reader = "promise reader output was invalid"
         # Mandatory provider-owned registry passed separately; model cannot replace it.
         validated = validate_promise_sheet(sheet, sources=registry, seller_domain=seller)
+        if proposed is not None:
+            reader = f"promise reader proposed {proposed} rows, {len(validated.records)} kept after quote checks"
+        explanation = "No validated statement was retained for this topic; this is not proof the merchant omits a policy."
+        if collection is not None:
+            explanation += f" Check details: {_extract_note(collection)}; {reader}."
         present = {row.topic for row in validated.records}
-        missing = [PromiseRecord(topic=topic, status="unavailable", explanation="No validated statement was retained for this topic; this is not proof the merchant omits a policy.") for topic in ("shipping_origin", "processing_time", "transit_time", "returns", "return_cost") if topic not in present]
+        missing = [PromiseRecord(topic=topic, status="unavailable", explanation=explanation) for topic in ("shipping_origin", "processing_time", "transit_time", "returns", "return_cost") if topic not in present]
         return validated.model_copy(update={"records": (validated.records + missing)[:12]})

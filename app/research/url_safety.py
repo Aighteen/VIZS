@@ -6,11 +6,51 @@ import asyncio
 import ipaddress
 import re
 import socket
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 
 
 class UnsafeURL(ValueError):
     pass
+
+
+# Ad/click tracking parameters that never select page content (LIVE-01). Only
+# these are removed; every other query parameter is kept in order.
+_TRACKING_PARAMS = frozenset({"gclid", "gclsrc", "gbraid", "wbraid", "dclid", "fbclid", "msclkid", "ttclid",
+                              "twclid", "yclid", "igshid", "li_fat_id", "mc_cid", "mc_eid", "srsltid", "_gl"})
+_TRACKING_PREFIXES = ("utm_", "gad_")
+_TRACKING_VALUES = {("source", "shoppingads")}
+
+
+def _is_tracking(name: str, value: str) -> bool:
+    key = name.lower()
+    return (key in _TRACKING_PARAMS or key.startswith(_TRACKING_PREFIXES)
+            or (key, value.lower()) in _TRACKING_VALUES)
+
+
+def _content_query(query: str) -> list[tuple[str, str]]:
+    return [(k, v) for k, v in parse_qsl(query, keep_blank_values=True) if not _is_tracking(k, v)]
+
+
+def strip_tracking(value: str) -> str:
+    """Return the public URL without ad-tracking query parameters."""
+    url = public_url(value)
+    parsed = urlsplit(url)
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    kept = _content_query(parsed.query)
+    if len(kept) == len(pairs):
+        return url
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(kept), ""))
+
+
+def same_page_key(value: str) -> tuple:
+    """Identity of a page for matching provider results to requested URLs.
+
+    Ignores scheme, a leading ``www.``, a trailing slash, percent-encoding
+    differences, tracking parameters and query order. Host and path must match.
+    """
+    parsed = urlsplit(public_url(value))
+    path = unquote(parsed.path).rstrip("/") or "/"
+    return (parsed.hostname.removeprefix("www."), path, tuple(sorted(_content_query(parsed.query))))
 
 
 def public_url(value: str) -> str:

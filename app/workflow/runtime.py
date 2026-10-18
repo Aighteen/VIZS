@@ -28,7 +28,9 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
                                          model=settings.xai_model)
                       if live and settings.xai_api_key and settings.xai_model else None)
         extractor = GrokExtractor(completion, timeout_seconds=settings.grok_timeout_seconds)
-        provider = TavilyProvider(settings.tavily_api_key if live else None, transport=tavily_transport)
+        # Extract stays under collect_promise_sources' 15 s bound.
+        provider = TavilyProvider(settings.tavily_api_key if live else None, transport=tavily_transport,
+                                  extract_timeout=14)
         research = SellerResearch(provider, destination_validator=destination_validator)
         promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model)
                           if completion is not None else None)
@@ -44,7 +46,7 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
             extractor = PromiseExtractor(promise_client if usable_page else None, timeout_seconds=20)
             # Independent context lookup never expands its fixed .com/.net registry allowlist.
             sheet, domain = await asyncio.gather(
-                extractor.extract(plan, policy_records),
+                extractor.extract(plan, policy_records, collection=collected),
                 DomainLookup(transport=domain_transport).lookup(urlsplit(str(plan.product_url)).hostname))
             return sheet.model_copy(update={"domain_context": domain})
 

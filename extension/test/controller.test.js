@@ -33,8 +33,9 @@ function setup(opts = {}) {
     deliver: async (tabId, message) => delivered.push({ tabId, message }),
     getTabUrl: async () => tabUrl,
     timeoutMs: opts.timeoutMs ?? 110_000,
-    // Unref so never-settled synthetic fetches do not keep the test process alive for 110 s.
-    setTimer: (fn, ms) => setTimeout(fn, ms).unref(),
+    // Unref only long timers so never-settled synthetic fetches do not keep the test
+    // process alive for 110 s; short ones must stay ref'd or the loop empties first (Node 22).
+    setTimer: (fn, ms) => (ms > 1000 ? setTimeout(fn, ms).unref() : setTimeout(fn, ms)),
   });
   return {
     controller, calls, delivered, pendingFetches,

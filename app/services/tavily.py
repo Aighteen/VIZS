@@ -10,16 +10,20 @@ from datetime import datetime, timezone
 import httpx
 
 from app.research.provider import ResearchUnavailable, SearchResponse, SourceRecord
-from app.research.url_safety import UnsafeURL, public_url
+from app.research.url_safety import UnsafeURL, public_url, same_page_key
 
 
 class TavilyProvider:
-    def __init__(self, api_key: str | None, *, transport=None, timeout: float = 8, max_results: int = 5):
-        if not 0 < timeout <= 15 or not 1 <= max_results <= 5:
+    def __init__(self, api_key: str | None, *, transport=None, timeout: float = 8, max_results: int = 5,
+                 extract_timeout: float | None = None):
+        extract_timeout = timeout if extract_timeout is None else extract_timeout
+        if not 0 < timeout <= 15 or not 0 < extract_timeout <= 15 or not 1 <= max_results <= 5:
             raise ValueError("Research limits out of range")
         self.api_key = api_key
         self.transport = transport
         self.timeout = timeout
+        # Extract fetches whole pages and is slower than Search.
+        self.extract_timeout = extract_timeout
         self.max_results = max_results
 
     async def search(self, query: str) -> list[SourceRecord]:
@@ -81,8 +85,8 @@ class TavilyProvider:
         except UnsafeURL as exc:
             raise ResearchUnavailable("Unsafe extraction URL") from exc
         try:
-            async with asyncio.timeout(self.timeout):
-                async with httpx.AsyncClient(transport=self.transport, timeout=self.timeout, follow_redirects=False, trust_env=False) as client:
+            async with asyncio.timeout(self.extract_timeout):
+                async with httpx.AsyncClient(transport=self.transport, timeout=self.extract_timeout, follow_redirects=False, trust_env=False) as client:
                     async with client.stream("POST", "https://api.tavily.com/extract", headers={"Authorization": f"Bearer {self.api_key}"}, json={"urls": admitted, "extract_depth": "basic", "format": "text", "include_images": False}) as response:
                         if response.status_code != 200:
                             raise ResearchUnavailable("Policy extraction unavailable")
@@ -100,15 +104,21 @@ class TavilyProvider:
             raise ResearchUnavailable("Policy extraction unavailable") from exc
         records = []
         seen = set()
+        # The provider may respell a requested URL (scheme, www., trailing slash,
+        # encoding, tracking parameters). Same host+path+content query is the same
+        # page; the record keeps the URL we admitted, never the provider's spelling.
+        requested = {}
+        for url in admitted:
+            requested.setdefault(same_page_key(url), url)
         for item in payload["results"][:3]:
             if not isinstance(item, dict) or not isinstance(item.get("raw_content"), str):
                 continue
             try:
-                url = public_url(item.get("url"))
+                url = requested.get(same_page_key(item.get("url")))
             except UnsafeURL:
                 continue
             # Reject substituted/redirect destinations. Provider may return partial success.
-            if url not in admitted or url in seen or not item["raw_content"].strip():
+            if url is None or url in seen or not item["raw_content"].strip():
                 continue
             seen.add(url)
             records.append(SourceRecord(url, "Retrieved merchant page", item["raw_content"][:12000], datetime.now(timezone.utc), content_kind="merchant_page"))

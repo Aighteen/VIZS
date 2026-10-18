@@ -43,17 +43,24 @@ class CompletionClient(Protocol):
     async def complete(self, message: str, schema: dict) -> str: ...
 
 
+class TruncatedResponse(ValueError):
+    """The provider stopped at its output token limit."""
+
+
 class XAICompletionClient:
     """Explicitly configured transport. Client lifetime belongs to the caller."""
 
-    def __init__(self, client: httpx.AsyncClient, *, api_key: str, model: str, system_prompt: str = SYSTEM_PROMPT, schema_name: str = "shopping_plan"):
+    def __init__(self, client: httpx.AsyncClient, *, api_key: str, model: str, system_prompt: str = SYSTEM_PROMPT, schema_name: str = "shopping_plan", max_tokens: int = 1000):
         if not api_key.strip() or not model.strip():
             raise ValueError("xAI key and model must be explicitly configured")
+        if not 1 <= max_tokens <= 6000:
+            raise ValueError("max_tokens out of range")
         self._client = client
         self._key = api_key
         self._model = model
         self._system_prompt = system_prompt
         self._schema_name = schema_name
+        self._max_tokens = max_tokens
 
     async def complete(self, message: str, schema: dict) -> str:
         # Fixed origin; no user-controlled endpoint, redirects, retries, or tools.
@@ -69,7 +76,7 @@ class XAICompletionClient:
                 "response_format": {"type": "json_schema", "json_schema": {
                     "name": self._schema_name, "strict": True, "schema": schema,
                 }},
-                "max_tokens": 1000,
+                "max_tokens": self._max_tokens,
                 "stream": False,
             },
             follow_redirects=False,
@@ -83,6 +90,8 @@ class XAICompletionClient:
         payload = json.loads(raw)
         choice = payload["choices"][0]
         message = choice["message"]
+        if choice.get("finish_reason") == "length":
+            raise TruncatedResponse("Provider response hit the output limit")
         if choice.get("finish_reason") != "stop" or message.get("tool_calls") or message.get("refusal"):
             raise ValueError("Incomplete or unsupported provider response")
         content = message["content"]
