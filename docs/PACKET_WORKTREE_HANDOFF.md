@@ -40,3 +40,11 @@ B/C contain uncommitted read-only copies of D contracts/fixtures/tests/docs and 
 When branch integration is instructed, A should incorporate D baseline f1ba046 and policy 9a9c7dc, then B 906a346 and C 60cd2ab into A's integration branch, which already has runtime httpx. No such integration was performed here.
 
 Use Contracts(ShoppingRequest, OrchestratorPlan, Assessment), imports from app.models; decide and format_sms from app.decision. Pass GrokExtractor.extract, SellerResearch(TavilyProvider(api_key)), and decide to EvaluationWorkflow; supply format_sms to create_app. XAICompletionClient requires caller-owned httpx.AsyncClient plus XAI_API_KEY and explicit XAI_MODEL. A owns client lifecycle/configuration; Tavily key supplied by A. Do not enable paid usage without instruction. A's default application remains intentionally unwired/503 until integration. Run the integrated full suite and endpoint checks after wiring; Photon callback/auth/send contract remains a separate blocked live gate.
+
+## Authorized merge completion
+
+Human subsequently instructed branch merging. A merged feat/packet-d-policy-qa, feat/packet-b-grok, and feat/packet-c-research with three --no-ff merges, in that order, without conflicts. All packet implementations are now on feat/packet-a-integration in C:\Github\VIZS-packet-a. Historical no-merge statements above describe the earlier handoff.
+
+Actual combined check from A: `& C:\Github\VIZS\.venv\Scripts\python.exe -m pytest -q` => 91 passed, exit 0, one installed Starlette/httpx deprecation warning. No live/paid provider calls occurred. Original main checkout and all B/C/D local dependency copies/artifacts remain preserved. Worktrees and branches were retained. No push or deployment.
+
+Remaining integration step: wire the default application using the interfaces above and verify endpoint behavior; this merge does not itself enable providers. Main was not updated because the original checkout holds uncommitted work; the combined branch is ready in the clean A worktree.
