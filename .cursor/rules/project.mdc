@@ -1,0 +1,10 @@
+---
+description: Shared project instructions and packet ownership for the SMS shopping assistant
+alwaysApply: true
+---
+
+Read and follow root `AGENTS.md`, including the required project context and submission deadlines. It is the shared project instruction source.
+
+Before implementation, read `docs/OWNERSHIP.md`, your assigned `docs/skills/packet-*.md`, and `docs/AGENT_HANDOFF.md`. Follow the explicit session assignment, use a separate worktree/checkout for concurrent edits, and preserve other sessions' changes.
+
+Do not infer permission for live paid APIs, push, deployment, or submission from this rule. Complete authorized work within owned paths and report actual validation using the shared handoff template.

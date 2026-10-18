@@ -42,3 +42,16 @@ Read `docs/PROJECT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/API_CONTRACTS.md`, `
 ## Definition of done for every task
 
 Report **changed paths**, **actual commands/tests run**, **observed outputs**, **remaining blockers**, **real vs mocked dependencies**, and the **exact integration step**. Never auto-push, deploy, use paid API credits, or submit on the team's behalf without instruction. If external docs are unavailable, label uncertainty rather than fabricate an integration.
+
+## Coordination across coding tools
+
+This file is the shared project instruction source for Codex, Claude Code, Cursor, and Copilot. Tool entry files must point here rather than maintain competing project rules. Explicit user instructions take precedence; report conflicts between repository documents before dependent work.
+
+- Before implementation, read `docs/OWNERSHIP.md`, your assigned `docs/skills/packet-*.md`, and `docs/AGENT_HANDOFF.md`. Inspect actual code and `git status --short`; proposed paths are not proof of implementation.
+- A human assigns a packet and exact writable paths to each session. An unassigned session may inspect and plan; it must not claim a role or start unrelated implementation. An existing explicit session assignment is sufficient; do not ask again.
+- Use one branch and separate worktree/checkout per concurrent editing session. Branches in one directory do not isolate edits. Do not switch another session's branch, overwrite its work, reset its changes, or resolve its conflicts without coordination.
+- `docs/OWNERSHIP.md` refines the candidate ownership above, including per-packet test ownership. D owns shared models; A owns wiring and merges. Request contract changes through a handoff rather than editing another owner's files.
+- Keep shared coordination files under A's control after initial setup; report proposed updates in your handoff. Never assume ownership edits in one worktree are visible in another; the human coordinator communicates active assignments.
+- Do not spawn additional editing agents unless explicitly requested. These are development roles, not a deployed multi-agent architecture.
+- Use the repository's actual dependency manifest and test commands once present. Until then, report setup/testing as unavailable; do not claim a passing test suite.
+- Complete authorized work inside your assignment, then provide `docs/AGENT_HANDOFF.md`'s report. Do not auto-push, merge, deploy, spend API credits, or submit without the applicable instruction.
