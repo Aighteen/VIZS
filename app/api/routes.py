@@ -115,6 +115,9 @@ async def photon():
 async def mock_message(request: Request):
     if not request.app.state.settings.enable_mock_sms:
         raise HTTPException(404)
+    # Same browser lockdown as the loopback evaluate routes (Q7): Origin -> 403,
+    # declared oversize -> 413, non-JSON -> 415, all before the body is read.
+    require_local_caller(request)
     workflow = workflow_for(request)
     try:
         event = MockInbound.model_validate_json(await limited_body(request))

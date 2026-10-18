@@ -1,4 +1,6 @@
 """Deterministic span/provenance checks, independent of model assertions."""
+import re
+
 from app.models import PromiseConditions, PromiseRecord, PromiseSheet, PromiseSource
 
 
@@ -7,10 +9,16 @@ from app.models import PromiseConditions, PromiseRecord, PromiseSheet, PromiseSo
 ORIGIN_WORDING = ("ships from", "shipped from", "dispatched from", "dispatches from", "warehouse",
                   "fulfilled from", "fulfillment center", "sent from", "origin")
 ORIGIN_NOT_PROVEN = "Not disclosed in inspected sources: an address is not proof of shipping origin."
+# Whole words/phrases only, case-insensitive (QA-06): "Original", "Aboriginal" and
+# "consent from" do not count. This is still lexical: "warehouse" in an unrelated
+# sentence counts (Q8, accepted; no semantic parsing).
+_ORIGIN_RE = re.compile(
+    r"\b(?:" + "|".join(r"\s+".join(map(re.escape, phrase.split())) for phrase in ORIGIN_WORDING) + r")\b",
+    re.IGNORECASE)
 
 
 def _has_origin_wording(row: PromiseRecord) -> bool:
-    return any(word in q.quote.casefold() for q in row.quotes for word in ORIGIN_WORDING)
+    return any(_ORIGIN_RE.search(q.quote) for q in row.quotes)
 
 
 def _host(value: str) -> str:

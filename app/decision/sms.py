@@ -9,14 +9,57 @@ from app.models import Assessment, Decision
 # bare domains into tappable links, so any link-like token inside a quoted
 # merchant span or condition is neutralized; only the labeled source URLs that
 # the formatter appends may be clickable (QA-02).
+#
+# Bare domains are neutralized only when they end in a real top-level domain
+# (human decision, QA-08): a built-in list of common generic TLDs, every
+# two-letter ASCII code (treated as a ccTLD), punycode "xn--" labels and
+# all-Unicode TLDs such as ".рф". Labels may be Unicode (IDN homoglyphs) and the
+# ideographic/fullwidth dots count as dots. So "2-3 days.Free returns",
+# "Dr.Smith" and "No.5" survive. Accepted residual false positives: prose whose
+# suffix happens to be a real TLD, e.g. "Eau.de Parfum" (.de) or "50ml.It ships"
+# (.it), is still replaced; safety wins over prose fidelity.
+_GENERIC_TLDS = frozenset("""
+    com net org edu gov mil int info biz name pro mobi asia tel travel jobs aero coop museum
+    shop store online site website xyz top club vip live life world today tech dev app page
+    link click blog news space fun icu buzz cloud one io co me tv ly ai gg cc
+    art design beauty fashion boutique deals sale market luxury gift gifts cheap discount
+    bargains coupons promo best love ltd inc llc company center email network digital media
+    studio agency group global work zone run email support services solutions express
+    help fit win bid trade guru rocks host press social chat host lol wtf moe
+""".split())
+_DOT = r"[.\u3002\uff0e\uff61]"  # ASCII, ideographic, fullwidth, halfwidth dots
 _LINKISH = re.compile(
-    r"(?:[a-z][a-z0-9+.-]*://\S+)|(?:\bwww\.\S+)|(?:\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b(?:[/?#]\S*)?)",
+    r"(?P<always>[a-z][a-z0-9+.-]*://\S+"                       # any scheme URL
+    r"|\bwww" + _DOT + r"\S+"                                    # www. host
+    r"|\b(?:mailto|tel|sms|facetime|javascript|data):\S+"       # schemes without //
+    r"|\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?(?:[/?#]\S*)?)"         # IPv4 literal, optional port/path
+    r"|(?P<domain>\b(?:[\w-]+" + _DOT + r")+(?P<tld>[\w-]+)\b)(?P<rest>(?::\d+)?(?:[/?#]\S*)?)",
     re.IGNORECASE)
 LINK_REMOVED = "[link removed]"
 
 
+def _real_tld(label: str) -> bool:
+    tld = label.casefold()
+    if tld.startswith("xn--"):
+        return True
+    if tld.isascii():
+        return tld in _GENERIC_TLDS or (len(tld) == 2 and tld.isalpha())
+    return all(not ch.isascii() for ch in tld)  # Unicode TLD such as "рф"
+
+
+def _replace(match: re.Match) -> str:
+    if match.group("always"):
+        return LINK_REMOVED
+    host = match.group("domain")
+    if _real_tld(match.group("tld")) or "xn--" in host.casefold():
+        return LINK_REMOVED
+    # Not a real TLD: keep the text, but still scan what followed it, so
+    # "days.Free/phish.com" cannot hide a domain in a pseudo-path.
+    return host + neutralize_links(match.group("rest"))
+
+
 def neutralize_links(text: str) -> str:
-    return _LINKISH.sub(LINK_REMOVED, text)
+    return _LINKISH.sub(_replace, text)
 
 
 def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:

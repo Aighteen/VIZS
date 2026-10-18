@@ -115,7 +115,7 @@ test("QA INPUT-01: listing URL comes only from sender.tab.url, never sender.url 
   const body = JSON.parse(t.calls[0].init.body);
   assert.deepEqual(Object.keys(body).sort(), ["channel", "message_text", "request_id"]);
   assert.equal(body.channel, "debug");
-  assert.equal(body.message_text, `Check this listing ${LISTING}`);
+  assert.equal(body.message_text, `Check this listing <${LISTING}>`);
   assert.ok(!body.message_text.includes("attacker"));
 });
 

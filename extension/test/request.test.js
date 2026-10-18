@@ -15,14 +15,14 @@ test("request body and headers: channel debug, bearer token, listing URL, no pri
   assert.equal(req.init.credentials, "omit");
   assert.deepEqual(JSON.parse(req.init.body), {
     request_id: base.requestId,
-    message_text: `Check this listing ${LISTING}`,
+    message_text: `Check this listing <${LISTING}>`,
     channel: "debug",
   });
 });
 
 test("optional price is appended as an explicit dollar amount (backend requires currency marker)", () => {
   const req = buildEvaluateRequest({ ...base, listingUrl: LISTING, price: "89.9" });
-  assert.equal(JSON.parse(req.init.body).message_text, `Check this listing ${LISTING} price $89.90`);
+  assert.equal(JSON.parse(req.init.body).message_text, `Check this listing <${LISTING}> price $89.90`);
   assert.deepEqual(normalizePrice("$1,234.5"), { ok: true, value: "$1234.50" });
   assert.deepEqual(normalizePrice("USD 45"), { ok: true, value: "$45" });
   assert.deepEqual(normalizePrice("  "), { ok: true, value: null });

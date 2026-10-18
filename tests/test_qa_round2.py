@@ -96,7 +96,6 @@ def test_QA02_choice_b_merchant_own_domain_text_inside_quote_is_replaced():
     assert text.count(f"{SELLER}") == 1  # only the appended labeled source link
 
 
-@pytest.mark.xfail(strict=True, reason="QA-08: internationalized bare domains in merchant quotes are not neutralized in phone replies")
 @pytest.mark.parametrize("injected", ["phish-аttacker.com/claim", "phish.рф/claim", "пример.com"],
                          ids=["idn_homoglyph", "unicode_tld", "cyrillic_label"])
 def test_QA02_internationalized_bare_domains_are_neutralized(injected):
@@ -138,10 +137,10 @@ EXTENSION_END_PUNCTUATION = [
 
 
 def extension_message(href, price):
-    return f"Check this listing {href}" + (f" price {price}" if price else "")
+    # QA-07 fix: the extension now wraps the tab href in angle brackets.
+    return f"Check this listing <{href}>" + (f" price {price}" if price else "")
 
 
-@pytest.mark.xfail(strict=True, reason="QA-07: extension listing hrefs ending in . (no price) ? ! ; or unmatched ) are trimmed by _trim_url")
 @pytest.mark.parametrize("href,price", EXTENSION_END_PUNCTUATION, ids=lambda v: str(v))
 def test_QA03_backend_extracts_exact_extension_href_with_trailing_punctuation(href, price):
     assert _provided_urls(extension_message(href, price)) == {href}
@@ -292,7 +291,6 @@ def test_Q4_explicit_origin_wording_is_retained(quote):
     assert origin_status(quote) == ["supported_as_statement"]
 
 
-@pytest.mark.xfail(strict=True, reason="QA-06: origin wording is matched as a substring (\"Original\" -> origin, \"consent from\" -> sent from)")
 @pytest.mark.parametrize("quote", ["Original packaging only. 100 Pike Street, Seattle, WA.",
                                    "With your consent from checkout we bill 100 Pike Street, Seattle.",
                                    "Aboriginal art prints. 100 Pike Street, Seattle."],
