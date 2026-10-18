@@ -1,6 +1,6 @@
-# Development ownership
+﻿# Development ownership
 
-Status: instruction setup only. Application paths below are proposed, not implemented. Human owners and AI sessions remain unassigned. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
+Status: Packet A scaffold implemented locally; D executable contracts and B/C/D implementations remain absent. Packet A was assigned to this Codex session by the human. Packets B-D assigned by the human to dedicated Codex agents; human identities remain unspecified. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
 
 ## Assignment register
 
@@ -8,16 +8,16 @@ The human coordinator assigns each session; A maintains this register afterward.
 
 | Packet | Human / AI tool and session | Branch | Checkout/worktree | Status |
 |---|---|---|---|---|
-| A: integration, Photon, submission coordination | TBD | `feat/packet-a-api-photon` | TBD | Unassigned |
-| B: Grok extraction | TBD | `feat/packet-b-grok` | TBD | Unassigned |
-| C: research and evidence | TBD | `feat/packet-c-research` | TBD | Unassigned |
-| D: contracts, policy, QA | TBD | `feat/packet-d-policy-qa` | TBD | Unassigned |
+| A: integration, Photon, submission coordination | Human name TBD / current Codex session | `feat/packet-a-integration` | `C:\Github\VIZS-packet-a` | Integration coordinator; preserved local scaffold |
+| B: Grok extraction | Codex Packet B agent | `feat/packet-b-grok` | `C:\Github\VIZS-packet-b` | Assigned; contracts first |
+| C: research and evidence | Codex Packet C agent | `feat/packet-c-research` | `C:\Github\VIZS-packet-c` | Assigned; contracts first |
+| D: contracts, policy, QA | Codex Packet D agent | `feat/packet-d-policy-qa` | `C:\Github\VIZS-packet-d` | Assigned; establish Contract gate first |
 
-- Integration/merge owner: TBD (A).
+- Integration owner: current Packet A Codex session; merges require explicit instruction.
 - Human Devpost submitter and backup: TBD.
-- Reviewed contract base commit: TBD.
+- Inspected repository base commit: `ffc3e85`; D executable contract baseline remains unavailable.
 - Research provider: TBD (Tavily preferred).
-- Photon account-specific callback/auth/send contract: UNVERIFIED.
+- Photon Spectrum: Free VIZS project configured, authorized iPhone registered, SDK iMessage echo agent running. Inbound text and completed reply request observed; user reported connection success. FastAPI callback/auth/send contract remains UNVERIFIED; no webhook enabled.
 
 ## Exclusive writable paths
 
@@ -44,3 +44,4 @@ These are development roles. Current runtime scope is one central Grok orchestra
 ## Submission protection (PDT)
 
 Human submitter targets Saturday October 17, 2026 at 10:00 PM for the mandatory 10:30 PM draft, and Sunday October 18 at 9:15 AM for the 10:00 AM final. Feature freeze: Sunday 7:30 AM. Preserve at least 30 minutes for upload checks. Humans select tracks and submit; see `SPRINT_PLAN.md` and `SUBMISSION_CHECKLIST.md`.
+

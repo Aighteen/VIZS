@@ -2,9 +2,78 @@
 
 **Project:** SMS-first, evidence-backed shopping decision assistant for fragrance purchases.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent.
-**Status:** Planning/instructions only. This kit does **not** implement working Photon, Grok, or Tavily integrations.
-**Current phase:** Pre-implementation planning / contract gate.
-**Immediate team decision:** Lock title/sponsor track choices and confirm provider access/docs (Photon, Grok, and one research provider) before coding.
+**Status:** Packet A local FastAPI/workflow scaffold implemented and offline-tested. No live Photon, Grok, or Tavily integration.
+**Current phase:** D contract gate and B/C/D dependency integration.
+**Immediate team decision:** Supply D's executable contracts and verified provider interfaces/docs. Humans finalize tracks.
+
+## Run the local API
+
+Use Python 3.11+ (tested with 3.12):
+
+```powershell
+py -3.12 -m venv .venv
+.venv/Scripts/python.exe -m pip install -e '.[test]'
+.venv/Scripts/python.exe -m uvicorn app.main:app
+```
+
+`GET /healthz` performs no external calls. The default `POST /api/v1/evaluate`
+returns 503 until shared contracts and domain dependencies are injected.
+`POST /webhooks/photon` returns a local disabled 503; no vendor acknowledgement,
+authentication, or retry behavior is assumed.
+
+Integrate by constructing `Contracts(DShoppingRequest, DOrchestratorPlan, DAssessment)`
+and `EvaluationWorkflow(contracts, extract, research, decide, settings)`, then call
+`create_app(workflow=workflow)`. The injected async extraction function accepts a
+request; async research accepts `(plan, task)` and returns evidence; synchronous
+decision accepts `(request, plan, evidence)` and returns D's assessment.
+These are A's proposed callable boundaries, awaiting B/C/D confirmation; A defines
+no replacement shared domain models. Research/URL/claim safety belongs to C and
+decision/SMS formatting to D. This scaffold never fetches a supplied product URL.
+
+The opt-in `/api/v1/mock/messages` simulator requires
+`Settings(enable_mock_sms=True)`, an injected workflow, and D's `format_sms`
+callable through `create_app`. Its local JSON is `{"event_id":"synthetic-1","text":"test"}`;
+this is **not Photon JSON**. Mock sends remain in memory and include a simulation
+label. Keep this developer API local: application-level authentication is not
+implemented. Do not expose it publicly as a production service.
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/test_api.py tests/test_photon.py tests/test_jobs.py -q
+```
+
+Tests use explicitly synthetic stand-ins in A's test files, not finalized D
+contracts or real seller evidence. Jobs/deduplication are bounded, single-process,
+non-durable, and lost on restart. Default limits: 32 active jobs, 1,024 dedupe
+records retained for one hour, two seller research calls, 20 seconds per evaluation
+or job, and 16 KiB request bodies. Capacity exhaustion rejects new events; sends
+that fail are recorded as failed without automatic retry. Status is internal only.
+Long-running synchronous injected functions cannot be preempted by asyncio's
+timeout; domain policy/formatters must stay short and provider I/O must be async.
+
+See `docs/PACKET_A_HANDOFF.md` for observed checks and remaining integration gates.
+
+## Photon Spectrum iMessage connection test
+
+An independent TypeScript connection-test agent is in `app/adapters/spectrum`
+(A-owned adapter path). Photon CLI 2.2.0 authenticated successfully; the VIZS Free
+project and authorized test user are configured. Local credentials are in its
+ignored `.env`. This uses iMessage through Spectrum SDK, not the disabled FastAPI
+Photon webhook and not SMS. It currently echoes text; shopping workflow wiring
+remains blocked on B/C/D dependencies. A real inbound iMessage and completed reply
+request were observed; the user reported connection success. No provider delivery
+receipt was inspected.
+
+```powershell
+cd app/adapters/spectrum
+npm.cmd ci
+npm.cmd run typecheck
+npm.cmd start
+```
+
+The agent was started successfully in this session. After restarting the computer,
+run the start command again. Do not run multiple copies for the same project.
+Dependency installation reported 18 moderate advisories; no forced dependency
+upgrade was applied. Treat this as a local hackathon prototype.
 
 ## Put these files in your repository
 

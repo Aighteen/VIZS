@@ -4,7 +4,7 @@ This is an action plan, not a record of successful API access. Update PASS/BLOCK
 
 | Probe | How to check | Pass evidence | Status |
 |---|---|---|---|
-| Local Python/FastAPI | Create isolated env, install documented repo deps, `pytest`, `uvicorn` | `/healthz`, local `/api/v1/evaluate` responds | UNTESTED |
+| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and synthetic injected evaluation pass; default evaluation is 503 pending D | OFFLINE PASS (9 tests); live server not probed |
 | Grok API | Use approved model and vendor SDK/Responses client; test small structured response | Valid parsed `OrchestratorPlan` | UNTESTED |
 | Research provider | Tavily API key/search request, or xAI supported native web search | Real source record URLs logged without sensitive info | UNTESTED |
 | Photon 2.0 Beta | Confirm beta account access, channel/phone provision, precise callback auth/send docs | Visible inbound message and accepted outbound SMS | UNTESTED |
@@ -12,6 +12,20 @@ This is an action plan, not a record of successful API access. Update PASS/BLOCK
 | End-to-end | Send test SMS, inspect trace ID, receive reply | Real inbound/outbound proof and no duplicate SMS | UNTESTED |
 
 ## Photon warnings
+
+Spectrum update: the official CLI 2.2.0 was installed and checked current;
+`whoami` succeeded. A VIZS Free project and authorized iPhone were configured.
+The separate SDK iMessage echo agent passed TypeScript checking and started,
+registering one iMessage provider. Runtime logs subsequently confirmed inbound
+text and a completed reply request; user reported connection success. No provider
+delivery receipt inspected.
+This is not a verified FastAPI webhook or shopping-assessment integration.
+
+Packet A currently exposes a disabled real callback endpoint and an independent,
+opt-in local mock simulator. Do not enable live callbacks by changing a flag:
+verified parsing/authentication, documented acknowledgement/retry semantics, and
+outbound transport still need implementation. No provider traffic was exercised.
+See `PACKET_A_HANDOFF.md` for exact integration wiring and limitations.
 
 - The public Photon 2.0 announcement describes a unified multi-channel messaging API. It does **not** establish that your account is enabled, that SMS is provisioned, or exactly which incoming callback fields/auth signature header your beta endpoint uses.
 - Several unrelated products are also named Photon; do not accidentally integrate Photon Engine game-chat, Photon Health, or another vendor's `/webhooks` API.
