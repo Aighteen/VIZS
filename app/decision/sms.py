@@ -19,9 +19,38 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
               " Search returned no seller sources." if "empty" in statuses and not assessment.evidence else "")
     if len(text + notice) <= max_chars:
         text += notice
+    # Promise conditions precede generic source references. Full quotes remain in
+    # the shared sheet; quote/link pairs are atomic in the bounded phone body.
+    promise_urls = set()
+    if assessment.promise_sheet:
+        sheet = assessment.promise_sheet
+        registry = {source.source_id: source for source in sheet.sources}
+        order = {"return_cost": 0, "returns": 1, "shipping_origin": 2, "arrival": 3,
+                 "processing_time": 4, "transit_time": 5}
+        for row in sorted(sheet.records, key=lambda r: order.get(r.topic, 10)):
+            label = row.topic.replace("_", " ")
+            if row.status == "not_disclosed":
+                detail = f" {label}: not disclosed in inspected source(s)."
+            elif row.status == "unavailable":
+                detail = f" {label}: check unavailable."
+            else:
+                qualifier = "Conditional conflict" if row.status == "conflicting" else "Merchant statement" if row.status == "supported_as_statement" else "Corroborated statement"
+                conditions = "; ".join(v for v in row.conditions.model_dump().values() if v)
+                detail = f" {qualifier} ({label}" + (f"; {conditions}" if conditions else "") + "):"
+                for quote in row.quotes:
+                    source = registry.get(quote.source_id)
+                    if source:
+                        detail += f' "{quote.quote}" {source.url}'
+                detail += " Fulfillment unverified."
+            row_urls = {str(registry[q.source_id].url) for q in row.quotes if q.source_id in registry}
+            if len(promise_urls | row_urls) <= 2 and len(text + detail) <= max_chars:
+                text += detail
+                promise_urls.update(str(registry[q.source_id].url) for q in row.quotes if q.source_id in registry)
     # Source URLs are added atomically, never truncated into misleading citations.
-    added = set()
+    added = set(promise_urls)
     for record in assessment.evidence:
+        if len(added) >= 2:
+            break
         url = str(record.source_url)
         if url in added:
             continue

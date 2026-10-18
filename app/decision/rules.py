@@ -1,8 +1,8 @@
 """Conservative deterministic prototype policy, never authenticity verification."""
-from app.models import Assessment, Decision, Evidence, OrchestratorPlan, Risk, ShoppingRequest
+from app.models import Assessment, Decision, Evidence, OrchestratorPlan, Risk, ShoppingRequest, PromiseSheet
 
 
-def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evidence]) -> Assessment:
+def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evidence], promise_sheet: PromiseSheet | None = None) -> Assessment:
     if request.request_id != plan.request_id:
         raise ValueError("Mismatched request correlation")
     records = [Evidence.model_validate(e) for e in evidence][:30]
@@ -40,4 +40,4 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
             selected = authorized
             missing = ["Authorization does not establish product authenticity."]
     return Assessment(request_id=request.request_id, seller_risk=risk, decision=action,
-                      summary=summary, evidence=selected, missing_information=missing, data_mode=mode)
+                      summary=summary, evidence=selected, missing_information=missing, data_mode=mode, promise_sheet=promise_sheet)

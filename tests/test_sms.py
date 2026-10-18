@@ -41,3 +41,27 @@ def test_unverified_links_are_intact_deduplicated_and_not_endorsements():
     assert text.count(item['source_url'])==1
     assert "authenticity is not established" in text
     assert len(text)<=1000
+
+
+def test_promise_conflict_phone_output_retains_both_quotes_and_links():
+    from app.models import PromiseSheet
+    from app.decision import validate_promise_sheet
+    assessment = Assessment.model_validate_json(Path("tests/fixtures/insufficient.json").read_text())
+    sheet = PromiseSheet.model_validate_json(Path("tests/fixtures/promise_conflict.json").read_text())
+    assessment.promise_sheet = validate_promise_sheet(sheet, sheet.sources)
+    text = format_sms(assessment)
+    assert "Conditional conflict" in text
+    assert '"Free returns."' in text
+    assert '"US customers pay return shipping."' in text
+    assert "https://shop.example/returns" in text
+    assert "Fulfillment unverified" in text
+    assert "authenticity is not established" in text
+    assert len(text) <= 1000
+
+
+def test_promise_unknown_and_unavailable_phone_wording():
+    from app.models import PromiseSheet
+    assessment = Assessment.model_validate_json(Path("tests/fixtures/insufficient.json").read_text())
+    for name, wording in [("missing", "not disclosed in inspected source"), ("unavailable", "check unavailable")]:
+        assessment.promise_sheet = PromiseSheet.model_validate_json(Path(f"tests/fixtures/promise_{name}.json").read_text())
+        assert wording in format_sms(assessment)
