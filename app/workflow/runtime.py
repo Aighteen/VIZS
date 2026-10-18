@@ -52,7 +52,7 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
             start = started.get()
             promise_timeout = reader_timeout(settings, None if start is None else time.monotonic() - start)
             # Dedicated request bound: the shared client's read timeout is the plan's.
-            promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.xai_model,
+            promise_client = (XAIPromiseCompletionClient(client, api_key=settings.xai_api_key, model=settings.promise_model,
                                                          request_timeout=promise_timeout)
                               if completion is not None and usable_page else None)
             promise_extractor = PromiseExtractor(promise_client, timeout_seconds=promise_timeout)

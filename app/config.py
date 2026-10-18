@@ -25,7 +25,14 @@ class Settings:
     extension_max_inflight: int = 1
     xai_api_key: str = field(default="", repr=False)
     xai_model: str = ""
+    # Optional model for the promise reader only; empty means use xai_model.
+    xai_promise_model: str = ""
     tavily_api_key: str = field(default="", repr=False)
+
+    @property
+    def promise_model(self) -> str:
+        """Model for the promise reader: XAI_PROMISE_MODEL when set, else XAI_MODEL."""
+        return self.xai_promise_model.strip() or self.xai_model
 
     def __post_init__(self):
         limits = (self.evaluation_timeout_seconds, self.grok_timeout_seconds, self.max_research_calls,
@@ -72,4 +79,5 @@ class Settings:
                    extension_max_inflight=integer("VIZS_EXTENSION_MAX_INFLIGHT", 1),
                    provider_mode=value("VIZS_PROVIDER_MODE", "offline"),
                    enable_mock_sms=mock == "true", xai_api_key=value("XAI_API_KEY"),
-                   xai_model=value("XAI_MODEL"), tavily_api_key=value("TAVILY_API_KEY"))
+                   xai_model=value("XAI_MODEL"),
+                   xai_promise_model=value("XAI_PROMISE_MODEL"), tavily_api_key=value("TAVILY_API_KEY"))

@@ -424,3 +424,32 @@ def test_fallback_conditions_survive_validation_and_show_in_reply():
                                    sources=registry, seller_domain="shop-synthetic.com")
     cost = next(r for r in sheet.records if r.topic == "return_cost")
     assert cost.conditions.region == "US" and len(sheet.records) == 3
+
+
+@pytest.mark.parametrize("environ, plan_model, promise_model", [
+    ({"XAI_MODEL": "plan-model-synthetic"}, "plan-model-synthetic", "plan-model-synthetic"),
+    ({"XAI_MODEL": "plan-model-synthetic", "XAI_PROMISE_MODEL": "  "}, "plan-model-synthetic", "plan-model-synthetic"),
+    ({"XAI_MODEL": "plan-model-synthetic", "XAI_PROMISE_MODEL": "reader-model-synthetic"}, "plan-model-synthetic", "reader-model-synthetic"),
+])
+def test_promise_model_setting_falls_back_to_xai_model(tmp_path, environ, plan_model, promise_model):
+    from app.config import Settings
+    settings = Settings.from_env(tmp_path / "absent.env", environ=environ)
+    assert settings.xai_model == plan_model and settings.promise_model == promise_model
+
+
+@pytest.mark.parametrize("promise_setting, expected", [("", "qa-synthetic-model"), ("reader-model-synthetic", "reader-model-synthetic")])
+def test_runtime_sends_promise_model_only_to_the_reader(promise_setting, expected):
+    from tests.test_brand_store_acceptance import LE_LABO, brand_scenario, evaluate, live_settings
+    models = {}
+    scenario = brand_scenario(LE_LABO)
+    handler = scenario.handler
+
+    def recording(request):
+        if request.url.host == "api.x.ai":
+            body = json.loads(request.content)
+            models[body["response_format"]["json_schema"]["name"]] = body["model"]
+        return handler(request)
+
+    scenario.handler = recording
+    evaluate(scenario, live_settings(xai_promise_model=promise_setting))
+    assert models == {"shopping_plan": "qa-synthetic-model", "promise_records": expected}
