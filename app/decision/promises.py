@@ -21,6 +21,48 @@ def _has_origin_wording(row: PromiseRecord) -> bool:
     return any(_ORIGIN_RE.search(q.quote) for q in row.quotes)
 
 
+# Retrieved pages and model output differ in typography only: curly vs straight
+# quotes and apostrophes, non-breaking/narrow/ideographic spaces, and collapsed
+# whitespace or line breaks. Matching ignores exactly these differences, then the
+# row keeps the page's own characters, so a displayed quote is always an exact
+# span of retrieved text. Letters, digits, other punctuation and dashes must match.
+_QUOTE_CHARS = str.maketrans({"‘": "'", "’": "'", "‚": "'", "‛": "'", "′": "'",
+                              "ʼ": "'", "“": '"', "”": '"', "„": '"', "‟": '"',
+                              "″": '"'})
+
+
+def _fold(text: str) -> tuple[str, list[int]]:
+    """Typography-folded text and, per folded character, its index in ``text``."""
+    chars, index = [], []
+    for i, ch in enumerate(text.translate(_QUOTE_CHARS)):
+        if ch.isspace():
+            if not chars or chars[-1] == " ":
+                continue
+            ch = " "
+        chars.append(ch)
+        index.append(i)
+    if chars and chars[-1] == " ":
+        chars.pop()
+        index.pop()
+    return "".join(chars), index
+
+
+def exact_span(value: str, content: str) -> str | None:
+    """The span of ``content`` that ``value`` quotes, up to typography, else None."""
+    if not value:
+        return None
+    if value in content:
+        return value
+    folded_value, _ = _fold(value)
+    if not folded_value:
+        return None
+    folded, index = _fold(content)
+    start = folded.find(folded_value)
+    if start < 0:
+        return None
+    return content[index[start]:index[start + len(folded_value) - 1] + 1]
+
+
 def _host(value: str) -> str:
     return value.lower().removeprefix("www.").rstrip(".")
 
@@ -50,10 +92,17 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
     rows, seen = [], set()
     for row in sheet.records:
         references = [registry.get(q.source_id) for q in row.quotes]
-        if any(source is None or q.quote not in source.content for q, source in zip(row.quotes, references)):
+        spans = [exact_span(q.quote, source.content) if source is not None else None
+                 for q, source in zip(row.quotes, references)]
+        if any(span is None or len(span) > 1200 for span in spans):
             continue
-        if row.merchant_statement and not any(row.merchant_statement in q.quote for q in row.quotes):
-            continue
+        # Keep the page's characters, never the model's spelling of them.
+        row = row.model_copy(update={"quotes": [q.model_copy(update={"quote": span}) for q, span in zip(row.quotes, spans)]})
+        if row.merchant_statement:
+            statement = next(filter(None, (exact_span(row.merchant_statement, q.quote) for q in row.quotes)), None)
+            if statement is None:
+                continue
+            row = row.model_copy(update={"merchant_statement": statement})
         if row.status in {"supported_as_statement", "independently_corroborated", "conflicting"} and not row.quotes:
             continue
         # A snippet is a reference, not inspected policy content.
@@ -68,14 +117,17 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
             if len({(q.source_id, q.quote) for q in row.quotes}) < 2:
                 continue
             # Different explicit regional scopes cannot become a global conflict.
-            if row.conditions.region and any(row.conditions.region not in s.content for s in references):
+            if row.conditions.region and any(exact_span(row.conditions.region, s.content) is None for s in references):
                 continue
         if row.status == "not_disclosed" and not any(s.content_kind == "merchant_page" for s in registry.values()):
             continue
         # Conditions must also be source spans: models cannot invent a region/time.
         content = "\n".join(s.content for s in references)
-        if any(value and value not in content for value in row.conditions.model_dump().values()):
+        stated = row.conditions.model_dump()
+        conditions = {name: exact_span(value, content) if value else None for name, value in stated.items()}
+        if any(value and conditions[name] is None for name, value in stated.items()):
             continue
+        row = row.model_copy(update={"conditions": PromiseConditions(**conditions)})
         key = (row.topic, row.status, tuple((q.source_id, q.quote) for q in row.quotes))
         if key in seen:
             continue

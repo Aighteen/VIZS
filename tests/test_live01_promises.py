@@ -179,13 +179,12 @@ def long_page():
     return FILLER + RETURNS + " " + FILLER + SHIPPING + " " + FILLER
 
 
-def test_policy_passages_keep_policy_windows_within_budget():
-    from app.research.promise_extractor import policy_passages
-    text = long_page()
-    kept = policy_passages(text)
-    assert len(text) > 40000 and len(kept) <= 5000 + 20
-    assert RETURNS in kept and SHIPPING in kept
-    assert policy_passages("short page") == "short page"
+def test_long_page_registry_keeps_policy_lines_beyond_the_old_cut():
+    from app.research.promise_extractor import source_registry
+    plan, source, _ = trimmed_inputs()
+    assert len(source.excerpt) > 40000 and source.excerpt.index(SHIPPING) > 20000
+    content = source_registry(plan, [source])[0].content
+    assert RETURNS in content and SHIPPING in content and "cardamom" not in content
 
 
 def trimmed_inputs():
@@ -211,17 +210,17 @@ def test_reader_receives_trimmed_page_and_exact_quotes_survive():
     reply = json.dumps({"records": [row("returns", "supported_as_statement", RETURNS)]})
     sheet = run(PromiseExtractor(Capture(reply), data_mode="mock").extract(plan, [source], collection=collection))
     content = seen[0]["sources"][0]["content"]
-    assert len(content) <= 5020 and RETURNS in content
+    assert len(content) <= 2500 and RETURNS in content
     kept = [r for r in sheet.records if r.status == "supported_as_statement"]
     assert [r.topic for r in kept] == ["returns"] and kept[0].quotes[0].quote == RETURNS
     assert "1 rows, 1 kept" in sheet.records[-1].explanation
 
 
 def test_quote_stitched_across_windows_or_absence_claim_on_trimmed_page_is_dropped():
-    from app.research.promise_extractor import policy_passages
+    from app.research.promise_extractor import source_registry
     plan, source, collection = trimmed_inputs()
-    retained = policy_passages(source.excerpt)
-    gap = retained.index("[...]")
+    retained = source_registry(plan, [source])[0].content
+    gap = retained.index("\n")
     stitched = retained[gap - 20:gap + 30]
     assert stitched in retained and stitched not in source.excerpt
     reply = json.dumps({"records": [row("returns", "supported_as_statement", stitched),

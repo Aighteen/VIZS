@@ -1,10 +1,15 @@
 """Bounded provider-only policy collection, reusing seller-search records."""
 import asyncio
+import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from app.research.provider import SourceRecord, ResearchUnavailable
 from app.research.url_safety import public_url, strip_tracking, validate_public_destination, UnsafeURL
+
+
+_POLICY_PAGE = re.compile(r"ship|deliver|return|refund|exchange|faq|help|terms|conditions|policy|policies",
+                          re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -25,7 +30,9 @@ async def collect_promise_sources(provider, plan, records=(), *, destination_val
         listing = strip_tracking(await destination_validator(str(plan.product_url)))
         seller = urlsplit(listing).hostname.lower().removeprefix("www.")
         urls = [listing]
-        for record in records[:5]:
+        # Policy pages (shipping, delivery, returns, FAQ, terms) first: the listing
+        # page rarely states them. Order is otherwise the search order.
+        for record in sorted(records[:5], key=lambda r: not _POLICY_PAGE.search(f"{r.source_url} {r.title}")):
             url = strip_tracking(public_url(record.source_url))
             if urlsplit(url).hostname.lower().removeprefix("www.") == seller and url not in urls:
                 urls.append(await destination_validator(url))

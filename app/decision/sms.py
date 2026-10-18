@@ -91,7 +91,10 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
         registry = {source.source_id: source for source in sheet.sources}
         order = {"return_cost": 0, "returns": 1, "shipping_origin": 2, "arrival": 3,
                  "processing_time": 4, "transit_time": 5}
-        for row in sorted(sheet.records, key=lambda r: order.get(r.topic, 10)):
+        # Quoted rows first, so the bounded body spends its space on what the
+        # merchant actually stated rather than on unavailable checks.
+        quoted_first = lambda r: (r.status in {"not_disclosed", "unavailable"}, order.get(r.topic, 10))
+        for row in sorted(sheet.records, key=quoted_first):
             label = row.topic.replace("_", " ")
             if row.status == "not_disclosed":
                 detail = f" {label}: not disclosed in inspected source(s)."
