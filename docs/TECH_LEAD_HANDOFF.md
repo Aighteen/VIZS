@@ -52,3 +52,15 @@ This machine has no project `.venv`; the tech lead used a scratch venv. Create o
 - Manual extension checks listed in `extension/README.md` (drag/keyboard, reduced motion, navigation mid-request).
 - Update README/NEXT_STEPS status, then push to GitHub **only when the human says so**, verify the public repo has no secrets.
 - Human-only: Devpost draft (was due Sat 10:30 PM), video, final submission by 9:15 AM target.
+
+## LIVE-01 result and open bug (latest)
+
+Live extension run on Le Labo's own store (`https://www.lelabofragrances.com/santal-33-147.html?...` with ~250 chars of ad-tracking params: gclid, gbraid, gad_*). Panel: INSUFFICIENT_EVIDENCE / VERIFY_FIRST, partial data; Tavily search 5 of 5 kept (two Le Labo pages: Terms & Conditions of Sale, Cancellation Rights FAQ, shown as unverified snippets); RDAP context returned; **all five promise rows "Could not be checked"** (unavailable). Record this in ACCEPTANCE_TESTS as LIVE-01 (completed, promise extraction not working live).
+
+Two problems, fixes proposed but NOT yet approved by the human (ask before building):
+
+1. **Brand selling on its own site can never get LOWER_RISK.** Side effect of QA-01/Q6 (seller-own-domain evidence never counts, `app/decision/rules.py` `_same_site`). Proposed: brand-direct rule when independent evidence confirms the listing domain is the brand's official site; must not let lookalikes (`lelabo-outlet-sale.com`) through.
+2. **Promise rows empty live.** Pipeline: `app/research/promises.py` collect_promise_sources (listing + same-seller search URLs, max 3) -> `app/services/tavily.py` extract_sources -> `app/workflow/runtime.py` resolve_promises (Grok promise client only if a `merchant_page` record exists) -> `app/research/promise_extractor.py` -> `validate_promise_sheet`. Failures are silent (exceptions swallowed, no stage status). Prime suspect: `tavily.py` line ~111 drops any extract result whose returned URL is not exactly in `admitted`; Tavily likely normalizes the long tracking URL, so the listing page is discarded. Other suspects: Grok spans not exact, 15-20 s timeouts.
+   Proposed fix: (a) strip tracking params (gclid, gbraid, wbraid, gad_*, utm_*, fbclid, msclkid, source=shoppingads) from the listing URL before research; (b) accept extract results for the same host+path differing only in tracking params; (c) add privacy-safe promise-stage diagnostics (extract status, pages returned, Grok called, rows kept/rejected) surfaced in the row explanations; (d) brand-direct rule above; (e) one more authorized live re-run of the same URL.
+
+The live backend on port 8000 was started by the previous session and stops with it. Restart: `python -m app.workflow.dev_server --live --port 8000` (root `.env` already has keys, token and extension origin).
