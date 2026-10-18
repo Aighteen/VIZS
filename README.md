@@ -103,20 +103,36 @@ Defaults: 32 active jobs, 1,024 dedupe records kept for one hour, two seller res
 
 ## Photon Spectrum iMessage
 
-`app/adapters/spectrum` is an A-owned TypeScript adapter using the Spectrum SDK over iMessage. It is not SMS and not the FastAPI webhook. Credentials (`PROJECT_ID`, `PROJECT_SECRET`) live in its ignored `.env`.
+`app/adapters/spectrum` is an A-owned TypeScript adapter using the Spectrum SDK over iMessage. It is not SMS and not the FastAPI webhook. Credentials (`PROJECT_ID`, `PROJECT_SECRET`) and `VIZS_REGISTERED_RECIPIENT` live in its ignored `.env` (see its `.env.example`); process environment variables override it.
 
 - `npm start` runs `src/index.ts`, which is still the original **echo** agent.
-- `src/test-bridge.mjs` is the bounded shopping bridge used for the confirmed live test: registered recipient only, up to three inbound messages, at most one URL evaluation, ten-minute expiry, no send retries. It needs `PROJECT_ID`, `PROJECT_SECRET`, `VIZS_REGISTERED_RECIPIENT` and `VIZS_LOCAL_API=http://127.0.0.1:<port>/api/v1/evaluate-message` in the process environment, plus the Python API running on loopback in authorized live mode.
-- No launch/stop script is committed yet; the original live test used a temporary local supervisor. Run only one listener per project.
+- `src/test-bridge.mjs` is the bounded shopping bridge used for the confirmed live test: registered recipient only, up to three inbound messages, at most one URL evaluation, ten-minute expiry, no send retries.
+- `src/launch.mjs` (`npm run shop`) starts the loopback Python API (`app.workflow.dev_server`), waits for `/healthz`, runs the bridge, and stops both when either exits or on Ctrl+C. It holds a single-instance PID lock, refuses before starting anything when configuration is missing, and prints only presence and the bridge's privacy-safe status lines. `--live` (paid provider calls) is passed only when you add it. Python is `VIZS_PYTHON`, else the repo `.venv`, else `python3` / `py -3`. Details: [app/adapters/spectrum/README.md](app/adapters/spectrum/README.md).
+
+macOS / Linux:
 
 ```sh
 cd app/adapters/spectrum
 npm ci
 npm run typecheck
-node --test src/bridge-handler.test.mjs
+npm test                      # bridge + launcher unit tests
+npm run shop:check            # offline: config presence, API start, /healthz, clean stop; no Spectrum
+npm run shop                  # offline API + bounded iMessage bridge (sends real replies)
+npm run shop -- --live        # authorized live run only: API may use Grok/Tavily credits
 ```
 
-On Windows use `npm.cmd`. Installation reported 18 moderate dependency advisories; none were force-upgraded.
+Windows (PowerShell):
+
+```powershell
+cd app/adapters/spectrum
+npm.cmd ci
+npm.cmd run typecheck
+npm.cmd test
+npm.cmd run shop:check
+npm.cmd run shop -- --live    # authorized live run only
+```
+
+Default API port is 8787 (`-- --port N` or `VIZS_LAUNCH_PORT`). Exit codes: 0 bounded test finished, 1 failure, 2 missing configuration, 3 another launcher or port already in use, 130/143 interrupted. Installation reported 18 moderate dependency advisories; none were force-upgraded.
 
 ## Evidence policy
 
