@@ -69,6 +69,14 @@ def test_brand_store_named_official_by_two_independent_sites_is_brand_direct():
     assert "lelabofragrances.com" not in assessment.summary  # policy text names no domain
 
 
+def test_one_curated_reference_source_is_enough_and_counts_once_per_domain():
+    assessment, sms = run(BRAND_URL, [GOOD[0]])
+    assert assessment.summary.startswith("Brand's own store: 1 independent source names")
+    assert "verify authorization" not in sms.lower()
+    both = [("https://en.wikipedia.org/wiki/Le_Labo", WIKI), ("https://de.wikipedia.org/wiki/Le_Labo", MAG)]
+    assert run(BRAND_URL, both)[0].summary.startswith("Brand's own store: 1 independent source names")
+
+
 def test_user_stated_matching_brand_drops_the_caveat():
     assessment, sms = run(BRAND_URL, GOOD, brand="Le Labo")
     assert_brand_direct(assessment, sms)
@@ -134,17 +142,18 @@ def test_marketplace_listings_are_never_brand_direct(listing):
 def test_seller_own_site_and_brand_named_hosts_never_count(source):
     claim = "This is the official website of Le Labo: lelabofragrances.com."
     forged = dict(evidence_type="official", claim_status="verified_fact", polarity="supports")
-    assessment, sms = run(BRAND_URL, [GOOD[0]], extra=[identity(source, claim, **forged)])
+    assessment, sms = run(BRAND_URL, [GOOD[1]], extra=[identity(source, claim, **forged)])
     assert_not_brand_direct(assessment, sms)
 
 
 # ------------------------------------------------------------------ weak support
 
 @pytest.mark.parametrize("sources", [
-    [GOOD[0]],                                                            # one source
+    [GOOD[1]],                                                            # one non-reference source
+    [GOOD[1], ("https://www.press-synthetic.com/x", MAG)],                # unvetted pages only (C7)
     [("https://www.reddit.com/r/fragrance/x", WIKI), ("https://www.quora.com/x", MAG)],  # forum/Q&A only
     [("https://www.reddit.com/r/fragrance/x", WIKI), GOOD[1]],            # one forum + one site
-    [("https://en.wikipedia.org/wiki/Le_Labo", WIKI), ("https://de.wikipedia.org/wiki/Le_Labo", MAG)],  # one registrable domain
+    [("https://a.press-synthetic.com/x", WIKI), ("https://b.press-synthetic.com/y", MAG)],  # one registrable domain
     [("https://en.wikipedia.org/wiki/Le_Labo", "Le Labo was founded by lelabofragrances.com staff."),
      ("https://www.vogue-synthetic.com/x", "lelabofragrances.com ships fast.")],  # no "official" wording
     [("https://en.wikipedia.org/wiki/Le_Labo", "lelabofragrances.com is not the official site."),
@@ -389,3 +398,67 @@ def test_C15_reference_registry_is_immutable_and_plain_ascii():
     assert isinstance(brand_direct.REFERENCE_SOURCES, frozenset)
     for site in brand_direct.REFERENCE_SOURCES:
         assert site == site.lower() and site.isascii() and not site.startswith("xn--") and "." in site
+
+
+# ------------------------------------------------------------------ reference page (live calibration)
+# Live 2026-10-17: Tavily search snippets for '"lelabofragrances.com" official website'
+# did not name the domain; the Wikipedia page extracted as markdown has the infobox row
+# "| Website | <https://www.lelabofragrances.com> |" (shape reproduced synthetically).
+
+WIKI_PAGE = ("# Le Labo\n\n| Type | Subsidiary |\n| Industry | Consumer goods |\n"
+             "| Parent | Estée Lauder Companies |\n| Website | <https://www.lelabofragrances.com> |\n\n"
+             "Le Labo is a perfumery brand.\n")
+
+
+class ExtractingProvider(FakeProvider):
+    def __init__(self, records, pages):
+        super().__init__(records)
+        self.pages, self.extracted = pages, []
+
+    async def extract_sources(self, urls, *, markdown=False, max_chars=12000, content_kind="merchant_page"):
+        self.extracted.append((urls, markdown, content_kind))
+        return [SourceRecord(u, "Retrieved reference page", self.pages[u][:max_chars], NOW, content_kind=content_kind)
+                for u in urls if u in self.pages]
+
+
+WIKI_URL = "https://en.wikipedia.org/wiki/Le_Labo"
+NEUTRAL_WIKI = SourceRecord(WIKI_URL, "Le Labo - Wikipedia", "Le Labo is a slow perfumery brand born in Grasse.", NOW)
+
+
+def brand_research(listing, records, pages):
+    provider = ExtractingProvider(records, pages)
+    return provider, asyncio.run(SellerResearch(provider).brand_direct_with_status(plan_for(listing)))
+
+
+def test_reference_page_infobox_row_confirms_the_exact_domain():
+    provider, result = brand_research(BRAND_URL, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert provider.extracted == [([WIKI_URL], True, "reference_page")]
+    assert [e.excerpt for e in result.evidence] == ["| Website | <https://www.lelabofragrances.com> |"]
+    assert result.evidence[0].excerpt in WIKI_PAGE  # exact span of retrieved text
+    report = result.report()
+    assert report.records_retained == 1 and report.records_received == 1
+    assessment, sms = run(BRAND_URL, [], extra=result.evidence)
+    assert assessment.summary.startswith("Brand's own store: 1 independent source names")
+    assert "verify authorization" not in sms.lower() and f"Unverified source: {WIKI_URL}" in sms
+
+
+@pytest.mark.parametrize("listing", ["https://lelabo-outlet-sale.com/x", "https://lelabofragrances.co/x",
+                                     "https://www.lelabofragrances.com.au/x", "https://lelabofragrances.com.evil.io/x"])
+def test_reference_page_naming_the_real_domain_does_not_help_lookalikes(listing):
+    _, result = brand_research(listing, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
+    assert result.evidence == []
+    assert_not_brand_direct(*run(listing, [], extra=result.evidence))
+
+
+def test_reference_extract_only_for_curated_hosts_and_never_the_seller():
+    records = [SourceRecord("https://www.vogue-synthetic.com/x", "", "Le Labo review", NOW),
+               SourceRecord("https://www.lelabofragrances.com/", "", "Le Labo home", NOW)]
+    provider, result = brand_research(BRAND_URL, records, {})
+    assert provider.extracted == [] and result.evidence == []
+
+
+@pytest.mark.parametrize("row", ["| Website | <https://www.lelabofragrances.com.evil.io> |",
+                                 "| Website | lelabofragrances.co |", "| Founded | lelabofragrances.com |",
+                                 "| Website | not lelabofragrances.com |"])
+def test_website_rows_need_the_exact_key_in_the_website_field(row):
+    assert brand_direct.classify_excerpt(row, "www.lelabofragrances.com") == "neutral"

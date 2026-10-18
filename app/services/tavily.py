@@ -70,7 +70,8 @@ class TavilyProvider:
             records.append(SourceRecord(url, title[:200] if isinstance(title, str) else "", excerpt, now))
         return SearchResponse(records, min(len(payload["results"]), self.max_results))
 
-    async def extract_sources(self, urls: list[str]) -> list[SourceRecord]:
+    async def extract_sources(self, urls: list[str], *, markdown: bool = False, max_chars: int = 12000,
+                              content_kind: str = "merchant_page") -> list[SourceRecord]:
         """One fixed-provider Extract call; never connect to merchant URLs.
 
         Contract: https://docs.tavily.com/documentation/api-reference/endpoint/extract
@@ -87,7 +88,7 @@ class TavilyProvider:
         try:
             async with asyncio.timeout(self.extract_timeout):
                 async with httpx.AsyncClient(transport=self.transport, timeout=self.extract_timeout, follow_redirects=False, trust_env=False) as client:
-                    async with client.stream("POST", "https://api.tavily.com/extract", headers={"Authorization": f"Bearer {self.api_key}"}, json={"urls": admitted, "extract_depth": "basic", "format": "text", "include_images": False}) as response:
+                    async with client.stream("POST", "https://api.tavily.com/extract", headers={"Authorization": f"Bearer {self.api_key}"}, json={"urls": admitted, "extract_depth": "basic", "format": "markdown" if markdown else "text", "include_images": False}) as response:
                         if response.status_code != 200:
                             raise ResearchUnavailable("Policy extraction unavailable")
                         chunks = bytearray()
@@ -121,5 +122,7 @@ class TavilyProvider:
             if url is None or url in seen or not item["raw_content"].strip():
                 continue
             seen.add(url)
-            records.append(SourceRecord(url, "Retrieved merchant page", item["raw_content"][:12000], datetime.now(timezone.utc), content_kind="merchant_page"))
+            title = "Retrieved merchant page" if content_kind == "merchant_page" else "Retrieved reference page"
+            records.append(SourceRecord(url, title, item["raw_content"][:min(max_chars, 40000)],
+                                        datetime.now(timezone.utc), content_kind=content_kind))
         return records

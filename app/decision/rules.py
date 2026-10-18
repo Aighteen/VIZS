@@ -109,7 +109,8 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
             # Still VERIFY_FIRST/INSUFFICIENT_EVIDENCE: the support is unverified
             # search excerpts, and nothing here establishes authenticity.
             count = len(direct.sources)
-            summary = (f"Brand's own store: {count} independent sources name this site as the brand's "
+            sources = "1 independent source names" if count == 1 else f"{count} independent sources name"
+            summary = (f"Brand's own store: {sources} this site as the brand's "
                        "official site (not a lookalike or marketplace), so reseller authorization does not apply. "
                        + ("" if direct.brand_matches else "This holds only if the product is that brand's own. ")
                        + "Check return terms before buying.")

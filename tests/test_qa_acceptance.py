@@ -191,9 +191,11 @@ def test_INPUT_01_valid_listing_binds_identity_price_and_one_seller_task():
     # One seller search plus one fixed brand-direct search (no model text in either).
     assert harness.calls.count("/search") == 2
     assert harness.dns[0] == LISTING
-    query = harness.tavily_bodies[0]["query"]
+    # The brand-direct check runs alongside the promise pipeline, so order bodies by kind.
+    queries = [b["query"] for b in harness.tavily_bodies if "query" in b]
+    query = queries[0]
     assert SELLER in query and "model-authored" not in query
-    assert harness.tavily_bodies[1]["query"] == f'"{SELLER}" official website'
+    assert queries[1] == f'"{SELLER}" official website'
     assert assessment["decision"] == "VERIFY_FIRST"
 
 
@@ -380,7 +382,7 @@ def test_PROM_07_unrelated_seller_page_is_excluded():
     assert {httpx.URL(s["url"]).host for s in sheet["sources"]} <= {SELLER}
     assert not any(r["status"] == "supported_as_statement" for r in sheet["records"])
     assert body["assessment"]["research"][0]["status"] == "filtered"
-    assert all(httpx.URL(u).host == SELLER for u in harness.tavily_bodies[-1]["urls"])
+    assert all(httpx.URL(u).host == SELLER for u in [b for b in harness.tavily_bodies if "urls" in b][-1]["urls"])
 
 
 def test_PROM_07_region_scoped_terms_are_qualified_not_merged():

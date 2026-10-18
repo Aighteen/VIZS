@@ -72,16 +72,23 @@ class EvaluationWorkflow:
                                "partial": findings.uncertainty}.get(findings.status)
                         if gap and gap not in research_gaps:
                             research_gaps.append(gap)
-                if (self.brand_research is not None
-                        and all(report.status != "unsafe_url" for report in research_reports)):
-                    # One fixed brand-direct query; its snippets are re-checked by policy.
-                    found = await self.brand_research(plan)
-                    # Its records only ever add the brand-direct outcome; seller research
-                    # reports and gaps stay those of the seller tasks.
-                    evidence.extend(found.evidence)
-            sheet = None
-            if self.promise_resolver and plan.intent == "evaluate_purchase" and not plan.requires_user_input and plan.product_url:
-                sheet = await self.promise_resolver(plan, source_records[:8])
+            brand_task = None
+            if (self.brand_research is not None and plan.intent == "evaluate_purchase"
+                    and not plan.requires_user_input and plan.product_url
+                    and all(report.status != "unsafe_url" for report in research_reports)):
+                # One fixed brand-direct check, run alongside the promise pipeline.
+                # Its records only ever add the brand-direct outcome (re-checked by
+                # policy); seller research reports and gaps stay those of the tasks.
+                brand_task = asyncio.create_task(self.brand_research(plan))
+            try:
+                sheet = None
+                if self.promise_resolver and plan.intent == "evaluate_purchase" and not plan.requires_user_input and plan.product_url:
+                    sheet = await self.promise_resolver(plan, source_records[:8])
+                if brand_task is not None:
+                    evidence.extend((await brand_task).evidence)
+            finally:
+                if brand_task is not None and not brand_task.done():
+                    brand_task.cancel()
             result = self.contracts.assessment.model_validate(
                 self.decide(request, plan, evidence, promise_sheet=sheet) if self.promise_resolver
                 else self.decide(request, plan, evidence))

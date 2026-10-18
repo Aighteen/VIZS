@@ -10,14 +10,14 @@ cases C1-C15). The listing's site counts as the brand's own store only when:
    TLD whose second label is not a generic word such as "net" in "net.ph");
    otherwise it is the exact host. Over-inclusive registrable domains are safe
    for exclusion only, never for granting (C2, C4, C10).
-3. Retrieved text from at least MIN_INDEPENDENT_SOURCES distinct registrable
-   domains names that exact key in the same sentence as an "official
-   site/store" phrase, with no denial or warning wording in that sentence
-   (C1, C3, C10).
-4. Those sources are independent: not on the seller's registrable domain or a
-   brand-named sibling, not a forum, social, review or marketplace host (C6),
-   and at least one is a curated reference source (REFERENCE_SOURCES), so N
-   agreeing unvetted pages are never enough on their own (C7).
+3. Retrieved text from a curated reference source (REFERENCE_SOURCES, e.g. a
+   Wikipedia infobox "Official website" link) names that exact key in the same
+   clause as an "official site/store" phrase, or in a labeled "Website" field
+   (an infobox row), with no denial or warning wording (C1, C3, C7, C10). Agreement among any number of
+   unvetted pages is never enough on its own; such pages only add citations.
+4. Every counted source is independent: not on the seller's registrable
+   domain or a brand-named sibling, not a forum, social, review or
+   marketplace host (C6). Distinct sources are counted per registrable domain.
 5. No independent source names a different domain as official (conflict).
 6. A brand the user stated, if any, matches the site's name (C9). The brand is
    only ever a blocker; it never builds a query or grants status (C8).
@@ -33,8 +33,6 @@ from dataclasses import dataclass, field
 
 from app.models import Evidence
 
-
-MIN_INDEPENDENT_SOURCES = 2
 
 # Curated reference sources (C7, C15): editorially maintained registries that
 # record an organization's official website. Immutable; no runtime write path.
@@ -87,6 +85,11 @@ _DENIAL = re.compile(
     r"|\bcopy-?cat|\bimitat|\bbeware\b|\bwarning\b|\balert\b|\bclone\b|\bknock-?off|\bsuspicious\b"
     r"|\bclaims?\b|\balleged",
     re.IGNORECASE)
+# A labeled website field, as in a Wikipedia infobox row rendered as a table
+# line ("| Website | <https://www.brand.com> |") or a "Website: brand.com" label.
+# Only the field value is matched, and it must name the exact grant key.
+_WEBSITE_ROW = re.compile(r"^\s*\|?\s*(?:official\s+)?web\s*-?site\s*(?:\||:)\s*(.{1,300}?)\s*\|?\s*$",
+                          re.IGNORECASE)
 # Clause boundaries: sentence ends followed by space, semicolons, line breaks,
 # bullets and pipes. Dots inside domains are never followed by whitespace.
 _CLAUSE = re.compile(r"(?<=[.!?])\s+|[;\n\r|•·]+")
@@ -168,6 +171,11 @@ def classify_excerpt(excerpt: str, listing_host: str) -> str:
     from app.decision.sms import _real_tld
     key, subdomains = grant_key(listing_host)
     listing_name = _collapse(_label(_site(listing_host)))
+    for line in (excerpt or "").splitlines():
+        # Infobox / directory row: "| Website | <https://www.brand.com> |" or "Website: brand.com".
+        row = _WEBSITE_ROW.match(line)
+        if row and not _DENIAL.search(row.group(1)) and _mentions(row.group(1), key, subdomains):
+            return "supports"
     clauses = [c for c in _CLAUSE.split(excerpt or "") if c.strip()]
     verdict = "neutral"
     for clause in clauses:
@@ -231,8 +239,9 @@ def assess(listing_host: str, evidence: list[Evidence], brand: str | None = None
     brand_key = _collapse(brand or "")
     if brand_key and not _same_name(brand_key, _collapse(_label(_site(host)))):
         return BrandDirect(**result)
-    confirmed = (len(support) >= MIN_INDEPENDENT_SOURCES and not conflict
-                 and any(site in REFERENCE_SOURCES for site in support))
+    # A curated reference source must name the site (C7); other independent
+    # pages only add citations. Agreement among unvetted pages never suffices.
+    confirmed = not conflict and any(site in REFERENCE_SOURCES for site in support)
     if not confirmed:
         return BrandDirect(**result)
     # Reference source first so the phone reply cites it.
