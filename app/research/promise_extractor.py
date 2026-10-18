@@ -97,11 +97,13 @@ _DURATION = (r"\b\d+(?:\s*(?:-|–|to)\s*\d+)?\)?\s*(?:business |working |calend
 _RETURN_WORDS = r"\b(?:returns?|returned|refunds?|refunded|exchanges?)\b"
 # Per topic: patterns that must all match, an optional exclusion, and a stronger
 # "policy sentence" pattern preferred over the first plain match.
+# Timing rows exclude return/refund sentences and deadlines for reporting issues.
+_NOT_TIMING = _RETURN_WORDS + r"|\b(?:contact us|claims?|report|notify)\b"
 _LEXICAL_TOPICS = (
     ("shipping_origin", (r"\b(?:ship(?:s|ped|ping)?|dispatch(?:es|ed)?|fulfil+(?:ed|ment)?|orders?)\b",
                          r"\b(?:ships from|shipped from|dispatched from|dispatches from|fulfilled from|sent from|warehouse)\b"), None, None),
-    ("processing_time", (r"\b(?:process(?:ed|ing)?|dispatch(?:ed|es)?|ships? within|shipped within|prepared)\b", _DURATION), _RETURN_WORDS, None),
-    ("transit_time", (r"\b(?:deliver(?:y|ed|ies)?|arrive|arrival|transit|(?:standard|express|ground) shipping)\b", _DURATION), _RETURN_WORDS, None),
+    ("processing_time", (r"\b(?:process(?:ed|ing)?|dispatch(?:ed|es)?|ships? within|shipped within|prepared)\b", _DURATION), _NOT_TIMING, None),
+    ("transit_time", (r"\b(?:deliver(?:y|ed|ies)?|arrive|arrival|transit|(?:standard|express|ground) shipping)\b", _DURATION), _NOT_TIMING, None),
     ("returns", (_RETURN_WORDS, _DURATION + r"|\b(?:final sale|non-returnable|unopened|unused|original condition|accept(?:s|ed)? returns|returns? (?:are|is) (?:not )?accepted)\b"), None,
      r"\b(?:accepts? returns|returns? (?:are|is) (?:not )?accepted|(?:may|can) (?:be )?return(?:ed)?|return (?:it|them|items?|products?) within|final sale|non-returnable)\b"),
     ("return_cost", (r"\breturns?\b", r"\b(?:free|prepaid|pre-paid|complimentary|return label|at (?:your|the customer's) (?:own )?(?:cost|expense)|you (?:are responsible|pay)|pay for (?:the )?return|deducted)\b"), None,
@@ -144,7 +146,8 @@ _PATH_REGIONS = {"us": "US", "en-us": "US", "en_us": "US", "uk": "UK", "gb": "UK
 # one is the only match, the case is attached as its eligibility condition.
 _SPECIAL = re.compile(r"\b(?:final sale(?: items?)?|sale items?|clearance(?: items?)?|samples?(?: orders?)?|gift cards?|"
                       r"personali[sz]ed (?:items?|products?|orders?)|engraved (?:items?|products?)|custom(?:ized)? (?:items?|orders?)|"
-                      r"pre-?orders?|outlet(?: items?)?|faulty|defective|damaged)\b", re.IGNORECASE)
+                      r"pre-?orders?|outlet(?: items?)?|faulty|defective|damaged|"
+                      r"for (?:[\w&'-]+ ){0,2}members|members only|opt(?:-| )in|when you (?:add|purchase|select)\b[^.]{0,40})\b", re.IGNORECASE)
 
 
 def listing_region(url) -> str | None:

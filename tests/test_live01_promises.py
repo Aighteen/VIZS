@@ -453,3 +453,13 @@ def test_runtime_sends_promise_model_only_to_the_reader(promise_setting, expecte
     scenario.handler = recording
     evaluate(scenario, live_settings(xai_promise_model=promise_setting))
     assert models == {"shopping_plan": "qa-synthetic-model", "promise_records": expected}
+
+
+def test_member_and_opt_in_terms_are_named_and_issue_deadlines_are_not_transit():
+    page = ("Free standard shipping on orders $50+ and free 60-day returns for Nike Members.\n"
+            "When you opt-in for coverage at checkout, your return label is included for free.\n"
+            "For order issues, contact us within 7 days of delivery with a photo.\n")
+    rows = fallback_rows("https://www.shop-synthetic.com/t/shoe", page)
+    assert rows["returns"][2] == "for Nike Members"
+    assert rows["return_cost"] == ("When you opt-in for coverage at checkout, your return label is included for free.", None, "opt-in")
+    assert "transit_time" not in rows
