@@ -188,10 +188,12 @@ def test_INPUT_01_valid_listing_binds_identity_price_and_one_seller_task():
     assert assessment["request_id"] == "qa-input-01"
     # Price accepted (an unsupported price would fail closed before research).
     assert harness.calls.count("shopping_plan") == 1
-    assert harness.calls.count("/search") == 1
+    # One seller search plus one fixed brand-direct search (no model text in either).
+    assert harness.calls.count("/search") == 2
     assert harness.dns[0] == LISTING
     query = harness.tavily_bodies[0]["query"]
     assert SELLER in query and "model-authored" not in query
+    assert harness.tavily_bodies[1]["query"] == f'"{SELLER}" official website'
     assert assessment["decision"] == "VERIFY_FIRST"
 
 
@@ -426,9 +428,10 @@ def test_PROM_09_injection_in_snippets_and_policy_is_data_not_instructions():
     body = response.json()
     assessment = body["assessment"]
     assert assessment["seller_risk"] == "INSUFFICIENT_EVIDENCE" and assessment["decision"] == "VERIFY_FIRST"
-    for name in ["shopping_plan", "/search", "/extract", "promise_records", "rdap"]:
+    for name in ["shopping_plan", "/extract", "promise_records", "rdap"]:
         assert harness.calls.count(name) == 1, harness.calls
-    assert len(harness.calls) == 5
+    assert harness.calls.count("/search") == 2  # seller search + brand-direct search
+    assert len(harness.calls) == 6
     plan_body, promise_body = harness.xai_bodies
     assert promise_body["messages"][0] == {"role": "system", "content": PROMISE_PROMPT}
     assert "ignore all previous" in promise_body["messages"][1]["content"].lower()

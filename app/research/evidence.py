@@ -108,3 +108,62 @@ class SellerResearch:
         return ResearchResult(evidence, status, provider_called=True,
                               records_received=received, records_filtered=received-len(evidence),
                               source_records=list(records[:5]))
+
+    async def brand_direct_with_status(self, plan) -> ResearchResult:
+        """One fixed-query search for independent pages naming the listing's site official.
+
+        Results become seller_identity search snippets, never verified facts;
+        app/decision/brand_direct re-checks them deterministically. Pages on the
+        seller's own registrable domain are dropped here and ignored there.
+        """
+        from app.decision.brand_direct import listing_eligible
+        from app.decision.rules import registrable_domain
+        if not plan.product_url or plan.requires_user_input or plan.intent != "evaluate_purchase":
+            return ResearchResult([], "skipped")
+        # Only the domain name goes to the fixed search provider; the merchant
+        # URL is never fetched here, so no second DNS resolution is needed.
+        # The workflow skips this query when seller research found the URL unsafe.
+        try:
+            host = urlsplit(public_url(str(plan.product_url))).hostname
+        except (UnsafeURL, ValueError):
+            return ResearchResult([], "unsafe_url")
+        site = registrable_domain(host)
+        if not listing_eligible(host):
+            return ResearchResult([], "skipped")
+        # Backend-built query from the listing's registrable domain only; no
+        # model-extracted text (brand, task query) reaches the provider.
+        query = f'"{site}" official website'
+        try:
+            async with asyncio.timeout(10):
+                if hasattr(self.provider, "search_with_status"):
+                    response = await self.provider.search_with_status(query)
+                    records, received = response.records, response.records_received
+                else:
+                    records = await self.provider.search(query)
+                    received = min(len(records), 5)
+        except ResearchUnavailable as exc:
+            return ResearchResult([], "timeout" if exc.reason == "timeout" else "unavailable", provider_called=True)
+        except TimeoutError:
+            return ResearchResult([], "timeout", provider_called=True)
+        from app.decision.brand_direct import classify_excerpt, is_independent
+        evidence, seen = [], set()
+        for record in records[:5]:
+            try:
+                source = public_url(record.source_url)
+            except (UnsafeURL, ValueError):
+                continue
+            excerpt = record.excerpt[:2000]
+            # Keep only independent pages that bear on the site's official status.
+            if (source in seen or not is_independent(urlsplit(source).hostname, site)
+                    or classify_excerpt(excerpt, site) == "neutral"):
+                continue
+            seen.add(source)
+            evidence.append(Evidence(
+                claim=("Unverified search excerpt about the site's official status: " + excerpt)[:1000],
+                source_url=source, source_title=record.title or None, excerpt=excerpt,
+                retrieved_at=record.retrieved_at, seller_domain=host.lower().removeprefix("www."),
+                evidence_type="search_snippet", claim_status="unknown",
+                finding="seller_identity", polarity="neutral", data_mode="partial"))
+        status = "partial" if evidence else "filtered" if received else "empty"
+        return ResearchResult(evidence, status, provider_called=True, records_received=received,
+                              records_filtered=received - len(evidence))

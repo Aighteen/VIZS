@@ -23,13 +23,15 @@ class Contracts:
 class EvaluationWorkflow:
     def __init__(self, contracts: Contracts, extract: Callable[..., Awaitable],
                  research: Callable[..., Awaitable], decide: Callable[..., BaseModel],
-                 settings: Settings, *, promise_resolver: Callable[..., Awaitable] | None = None):
+                 settings: Settings, *, promise_resolver: Callable[..., Awaitable] | None = None,
+                 brand_research: Callable[..., Awaitable] | None = None):
         self.contracts = contracts
         self.extract = extract
         self.research = research
         self.decide = decide
         self.settings = settings
         self.promise_resolver = promise_resolver
+        self.brand_research = brand_research
         self._completed: dict[str, tuple[float, BaseModel]] = {}
 
     async def evaluate(self, request: BaseModel) -> BaseModel:
@@ -70,6 +72,13 @@ class EvaluationWorkflow:
                                "partial": findings.uncertainty}.get(findings.status)
                         if gap and gap not in research_gaps:
                             research_gaps.append(gap)
+                if (self.brand_research is not None
+                        and all(report.status != "unsafe_url" for report in research_reports)):
+                    # One fixed brand-direct query; its snippets are re-checked by policy.
+                    found = await self.brand_research(plan)
+                    # Its records only ever add the brand-direct outcome; seller research
+                    # reports and gaps stay those of the seller tasks.
+                    evidence.extend(found.evidence)
             sheet = None
             if self.promise_resolver and plan.intent == "evaluate_purchase" and not plan.requires_user_input and plan.product_url:
                 sheet = await self.promise_resolver(plan, source_records[:8])

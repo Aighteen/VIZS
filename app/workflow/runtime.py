@@ -57,6 +57,12 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
                 return ResearchResult([], "unavailable")
             return await research.research_with_status(plan, task)
 
+        async def brand_research(plan):
+            if not live or not settings.tavily_api_key:
+                from app.research.evidence import ResearchResult
+                return ResearchResult([], "skipped")
+            return await research.brand_direct_with_status(plan)
+
         def decision(request, plan, evidence, promise_sheet=None):
             assessment = decide(request, plan, evidence, promise_sheet=promise_sheet)
             if plan.requires_user_input and plan.clarification:
@@ -70,4 +76,4 @@ async def runtime_workflow(settings, *, xai_transport=None, tavily_transport=Non
 
         yield EvaluationWorkflow(Contracts(ShoppingRequest, OrchestratorPlan, Assessment),
                                  extractor.extract, research_with_status, decision, settings,
-                                 promise_resolver=resolve_promises)
+                                 promise_resolver=resolve_promises, brand_research=brand_research)

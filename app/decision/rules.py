@@ -1,4 +1,5 @@
 """Conservative deterministic prototype policy, never authenticity verification."""
+from app.decision import brand_direct
 from app.models import Assessment, Decision, Evidence, OrchestratorPlan, Risk, ShoppingRequest, PromiseSheet
 
 
@@ -6,6 +7,11 @@ from app.models import Assessment, Decision, Evidence, OrchestratorPlan, Risk, S
 # the URL was supplied but extraction failed (Q2), so the phone reply never asks
 # for a URL the user already sent.
 URL_REQUEST = "Product listing URL and context"
+
+# Marks a brand-direct assessment (app/decision/brand_direct.py). The phone reply
+# then uses the summary instead of the generic "verify authorization" label.
+BRAND_DIRECT_NOTE = ("Brand-direct status rests on independent search excerpts naming this site "
+                     "as the brand's official site, not on a statement from the brand.")
 
 
 # Common multi-label public suffixes. This is a deliberately small built-in list,
@@ -98,5 +104,16 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
             summary = "Official seller authorization supports lower seller risk. Consider buying after checking listing and return terms."
             selected = authorized
             missing = ["Authorization does not establish product authenticity."]
+        elif not adverse and (direct := brand_direct.assess(host, relevant, plan.brand)).confirmed:
+            # The brand selling on its own site needs no reseller authorization.
+            # Still VERIFY_FIRST/INSUFFICIENT_EVIDENCE: the support is unverified
+            # search excerpts, and nothing here establishes authenticity.
+            count = len(direct.sources)
+            summary = (f"Brand's own store: {count} independent sources name this site as the brand's "
+                       "official site (not a lookalike or marketplace), so reseller authorization does not apply. "
+                       + ("" if direct.brand_matches else "This holds only if the product is that brand's own. ")
+                       + "Check return terms before buying.")
+            selected = direct.sources
+            missing = [BRAND_DIRECT_NOTE, "Product authenticity is not established."]
     return Assessment(request_id=request.request_id, seller_risk=risk, decision=action,
                       summary=summary, evidence=selected, missing_information=missing, data_mode=mode, promise_sheet=promise_sheet)
