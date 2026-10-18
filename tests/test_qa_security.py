@@ -312,7 +312,12 @@ def test_SEC_01_tracked_files_contain_no_provider_keys_pans_or_phone_numbers():
         except (UnicodeDecodeError, OSError):
             continue
         for number, line in enumerate(text.splitlines(), 1):
-            hits += [f"{name}:{number}:{label}" for label, p in patterns.items() if re.search(p, line)]
+            for label, p in patterns.items():
+                for match in re.finditer(p, line):
+                    digits = re.sub(r"\D", "", match.group())[-10:]
+                    if label == "phone" and "555" in (digits[:3], digits[3:6]):
+                        continue  # fictional 555 numbers used as labeled synthetic test data
+                    hits.append(f"{name}:{number}:{label}")
             for match in re.finditer(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)", line):
                 digits = re.sub(r"\D", "", match.group())
                 if 13 <= len(digits) <= 19 and luhn(digits):

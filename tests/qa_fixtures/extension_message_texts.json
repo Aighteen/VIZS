@@ -1,0 +1,23 @@
+{
+  "label": "SYNTHETIC QA fixture: message_text strings built by extension/src/lib/request.js buildMessageText(href, price); invented hosts",
+  "cases": [
+    {"id": "plain", "href": "https://synthetic-shop.com/perfume/qa", "price": null,
+     "message_text": "Check this listing https://synthetic-shop.com/perfume/qa"},
+    {"id": "price", "href": "https://synthetic-shop.com/perfume/qa", "price": "$89.99",
+     "message_text": "Check this listing https://synthetic-shop.com/perfume/qa price $89.99"},
+    {"id": "large_price", "href": "https://synthetic-shop.com/perfume/qa", "price": "$1250",
+     "message_text": "Check this listing https://synthetic-shop.com/perfume/qa price $1250"},
+    {"id": "query_fragment", "href": "https://synthetic-shop.com/p?a=1&b=2#reviews", "price": "$10.50",
+     "message_text": "Check this listing https://synthetic-shop.com/p?a=1&b=2#reviews price $10.50"},
+    {"id": "percent_encoded", "href": "https://synthetic-shop.com/eau-de-parfum%C3%A9", "price": null,
+     "message_text": "Check this listing https://synthetic-shop.com/eau-de-parfum%C3%A9"},
+    {"id": "root", "href": "https://synthetic-shop.com/", "price": null,
+     "message_text": "Check this listing https://synthetic-shop.com/"},
+    {"id": "apostrophe", "href": "https://synthetic-shop.com/perfume/it's-50ml", "price": null, "known_defect": "QA-03",
+     "message_text": "Check this listing https://synthetic-shop.com/perfume/it's-50ml"},
+    {"id": "trailing_paren", "href": "https://synthetic-shop.com/perfume-(50ml)", "price": null, "known_defect": "QA-03",
+     "message_text": "Check this listing https://synthetic-shop.com/perfume-(50ml)"},
+    {"id": "trailing_dot", "href": "https://synthetic-shop.com/perfume.", "price": "$20", "known_defect": "QA-03",
+     "message_text": "Check this listing https://synthetic-shop.com/perfume. price $20"}
+  ]
+}

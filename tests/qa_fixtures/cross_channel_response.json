@@ -1,0 +1,178 @@
+{
+  "label": "SYNTHETIC QA fixture (OUT-03): mocked backend response for /api/v1/extension/evaluate; not real research. Regenerate only from tests/test_qa_cross_channel.py::produce.",
+  "response": {
+    "assessment": {
+      "request_id": "qa-cross-channel",
+      "seller_risk": "INSUFFICIENT_EVIDENCE",
+      "decision": "VERIFY_FIRST",
+      "summary": "Seller authorization remains unconfirmed. Verify authorization and return terms before buying.",
+      "evidence": [
+        {
+          "claim": "Unverified search excerpt: synthetic-shop.com returns policy",
+          "source_url": "https://synthetic-shop.com/returns",
+          "source_title": "Returns",
+          "evidence_type": "search_snippet",
+          "claim_status": "unknown",
+          "retrieved_at": "2026-10-18T04:23:47.216100Z",
+          "excerpt": "synthetic-shop.com returns policy",
+          "evidence_id": null,
+          "seller_domain": "synthetic-shop.com",
+          "finding": "other",
+          "polarity": "neutral",
+          "data_mode": "partial"
+        },
+        {
+          "claim": "Unverified search excerpt: synthetic-shop.com shipping FAQ",
+          "source_url": "https://synthetic-shop.com/faq",
+          "source_title": "FAQ",
+          "evidence_type": "search_snippet",
+          "claim_status": "unknown",
+          "retrieved_at": "2026-10-18T04:23:47.216100Z",
+          "excerpt": "synthetic-shop.com shipping FAQ",
+          "evidence_id": null,
+          "seller_domain": "synthetic-shop.com",
+          "finding": "other",
+          "polarity": "neutral",
+          "data_mode": "partial"
+        }
+      ],
+      "promise_sheet": {
+        "seller_domain": "synthetic-shop.com",
+        "sources": [
+          {
+            "source_id": "source_1",
+            "url": "https://synthetic-shop.com/perfume/qa",
+            "title": "Retrieved merchant page",
+            "retrieved_at": "2026-10-18T04:23:47.216486Z",
+            "content": "Free returns. US customers only.",
+            "content_kind": "merchant_page",
+            "seller_domain": "synthetic-shop.com",
+            "data_mode": "partial"
+          },
+          {
+            "source_id": "source_2",
+            "url": "https://synthetic-shop.com/returns",
+            "title": "Retrieved merchant page",
+            "retrieved_at": "2026-10-18T04:23:47.216496Z",
+            "content": "US customers pay return shipping. Unopened items within 30 days.",
+            "content_kind": "merchant_page",
+            "seller_domain": "synthetic-shop.com",
+            "data_mode": "partial"
+          },
+          {
+            "source_id": "source_3",
+            "url": "https://synthetic-shop.com/faq",
+            "title": "FAQ",
+            "retrieved_at": "2026-10-18T04:23:47.216100Z",
+            "content": "synthetic-shop.com shipping FAQ",
+            "content_kind": "search_snippet",
+            "seller_domain": "synthetic-shop.com",
+            "data_mode": "partial"
+          }
+        ],
+        "records": [
+          {
+            "topic": "return_cost",
+            "status": "conflicting",
+            "merchant_statement": "Free returns.",
+            "explanation": "Potentially differing terms; compare the quoted conditions and applicability.",
+            "quotes": [
+              {
+                "source_id": "source_1",
+                "quote": "Free returns."
+              },
+              {
+                "source_id": "source_2",
+                "quote": "US customers pay return shipping."
+              }
+            ],
+            "conditions": {
+              "region": "US",
+              "time": null,
+              "eligibility": "Unopened items within 30 days."
+            }
+          },
+          {
+            "topic": "shipping_origin",
+            "status": "unavailable",
+            "merchant_statement": null,
+            "explanation": "No validated statement was retained for this topic; this is not proof the merchant omits a policy.",
+            "quotes": [],
+            "conditions": {
+              "region": null,
+              "time": null,
+              "eligibility": null
+            }
+          },
+          {
+            "topic": "processing_time",
+            "status": "unavailable",
+            "merchant_statement": null,
+            "explanation": "No validated statement was retained for this topic; this is not proof the merchant omits a policy.",
+            "quotes": [],
+            "conditions": {
+              "region": null,
+              "time": null,
+              "eligibility": null
+            }
+          },
+          {
+            "topic": "transit_time",
+            "status": "unavailable",
+            "merchant_statement": null,
+            "explanation": "No validated statement was retained for this topic; this is not proof the merchant omits a policy.",
+            "quotes": [],
+            "conditions": {
+              "region": null,
+              "time": null,
+              "eligibility": null
+            }
+          },
+          {
+            "topic": "returns",
+            "status": "unavailable",
+            "merchant_statement": null,
+            "explanation": "No validated statement was retained for this topic; this is not proof the merchant omits a policy.",
+            "quotes": [],
+            "conditions": {
+              "region": null,
+              "time": null,
+              "eligibility": null
+            }
+          }
+        ],
+        "domain_context": {
+          "status": "context_only",
+          "explanation": "Registry registration date is domain context, not business age, authenticity or fraud evidence.",
+          "source_url": "https://rdap.verisign.com/com/v1/domain/synthetic-shop.com",
+          "retrieved_at": "2026-10-18T04:23:47.217594Z",
+          "registered_at": "2019-05-01T00:00:00Z"
+        },
+        "image_context": {
+          "status": "unavailable",
+          "explanation": "This check is not available; no conclusion was drawn.",
+          "source_url": null,
+          "retrieved_at": null,
+          "registered_at": null
+        }
+      },
+      "research": [
+        {
+          "provider": "tavily",
+          "status": "partial",
+          "provider_called": true,
+          "records_received": 2,
+          "records_retained": 2,
+          "records_filtered": 0
+        }
+      ],
+      "missing_information": [
+        "Search snippets are unverified; authorization, brand and region remain unconfirmed.",
+        "Independent seller verification",
+        "Product authenticity is not established."
+      ],
+      "data_mode": "partial"
+    },
+    "message_text": "[PARTIAL DATA] INSUFFICIENT_EVIDENCE: Seller authorization unconfirmed. Verify authorization and return terms before buying. Product authenticity is not established. Potentially differing terms; compare conditions (return cost; US; Unopened items within 30 days.): \"Free returns.\" https://synthetic-shop.com/perfume/qa \"US customers pay return shipping.\" https://synthetic-shop.com/returns Fulfillment unverified. returns: check unavailable. shipping origin: check unavailable. processing time: check unavailable. transit time: check unavailable."
+  }
+}
