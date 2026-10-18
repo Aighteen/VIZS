@@ -127,7 +127,7 @@ class SellerResearch:
             host = urlsplit(public_url(str(plan.product_url))).hostname
         except (UnsafeURL, ValueError):
             return ResearchResult([], "unsafe_url")
-        site = registrable_domain(host)
+        site = registrable_domain(host)  # query text only; granting uses brand_direct.grant_key
         if not listing_eligible(host):
             return ResearchResult([], "skipped")
         # Backend-built query from the listing's registrable domain only; no
@@ -154,14 +154,14 @@ class SellerResearch:
                 continue
             excerpt = record.excerpt[:2000]
             # Keep only independent pages that bear on the site's official status.
-            if (source in seen or not is_independent(urlsplit(source).hostname, site)
-                    or classify_excerpt(excerpt, site) == "neutral"):
+            if (source in seen or not is_independent(urlsplit(source).hostname, host)
+                    or classify_excerpt(excerpt, host) == "neutral"):
                 continue
             seen.add(source)
             evidence.append(Evidence(
                 claim=("Unverified search excerpt about the site's official status: " + excerpt)[:1000],
                 source_url=source, source_title=record.title or None, excerpt=excerpt,
-                retrieved_at=record.retrieved_at, seller_domain=host.lower().removeprefix("www."),
+                retrieved_at=record.retrieved_at, seller_domain=host.lower().rstrip(".").removeprefix("www."),
                 evidence_type="search_snippet", claim_status="unknown",
                 finding="seller_identity", polarity="neutral", data_mode="partial"))
         status = "partial" if evidence else "filtered" if received else "empty"

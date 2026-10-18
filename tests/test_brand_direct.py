@@ -266,3 +266,126 @@ def test_workflow_skips_brand_research_after_unsafe_seller_url():
                                   lambda r, p, e: decide(r, p, e), Settings(), brand_research=brand)
     result = asyncio.run(workflow.evaluate(ShoppingRequest(request_id="bd", message_text="x")))
     assert called == [] and result.decision == "VERIFY_FIRST"
+
+
+# ------------------------------------------------------------------ threat model C1-C15
+# docs/reviews/BRAND_DIRECT_THREAT_MODEL.md (lane E). Cases not listed here are
+# covered above: C6 (self-asserted), C10 (regional siblings), C14 (precedence).
+
+BANNED_WORDS = ("authentic ", "genuine", "guarantee", "safe to buy", "counterfeit")
+
+
+@pytest.mark.parametrize("host", [
+    "lelabo-outlet-sale.com", "le-labo-fragrances.shop", "lelabofragrances.co", "lelabofragrance.com",
+    "lelabofragrances-official.com", "lelabofragrances.com.evil.io", "www.lelabofragrances.com.evil.io",
+    "lelabofragrances.com-shop.io", "xn--llabofragrances-4nm.com", "lеlabofragrances.com",
+    "brand-sale.myshopify.com", "shop.lelabofragrances.com.attacker.net",
+])
+def test_C1_C2_C3_lookalike_suffix_append_and_homoglyph_hosts(host):
+    listing = f"https://{host}/santal-33"
+    assert_not_brand_direct(*run(listing, GOOD))
+    # Sources that also name the listing next to the real domain do not help it.
+    mixed = [(s, e + f" Also seen: {host}.") for s, e in GOOD]
+    assert_not_brand_direct(*run(listing, mixed))
+
+
+def test_C2_registrable_domain_of_suffix_append_is_the_attacker():
+    from app.decision.rules import registrable_domain
+    assert registrable_domain("lelabofragrances.com.evil.io") == "evil.io"
+    assert brand_direct.grant_key("www.lelabofragrances.com.evil.io") == ("evil.io", True)
+
+
+@pytest.mark.parametrize("listing", ["https://LELABOFRAGRANCES.COM./santal-33",
+                                     "https://www.lelabofragrances.com/santal-33",
+                                     "https://lelabofragrances.com/santal-33"])
+def test_C3_real_domain_spelling_variants_still_match(listing):
+    assert_brand_direct(*run(listing, GOOD))
+
+
+def test_C4_shared_platform_and_unlisted_suffix_need_the_exact_host():
+    shop = [("https://en.wikipedia.org/wiki/Brand", "The official store is brand.myshopify.com."),
+            ("https://www.vogue-synthetic.com/x", "Shop at the official store brand.myshopify.com.")]
+    assert_not_brand_direct(*run("https://brand-sale.myshopify.com/products/x", shop))
+    assert_not_brand_direct(*run("https://brand.myshopify.com/products/x", shop))  # platforms: never
+    ph = [("https://en.wikipedia.org/wiki/Brand", "The official website is brand.net.ph."),
+          ("https://www.vogue-synthetic.com/x", "Buy at the official online store brand.net.ph.")]
+    assert brand_direct.grant_key("evil.net.ph") == ("evil.net.ph", False)
+    assert_not_brand_direct(*run("https://evil.net.ph/p", ph))
+    assert_not_brand_direct(*run("https://shop.brand.net.ph/p", ph))  # exact host only
+    assert_brand_direct(*run("https://brand.net.ph/p", ph))
+    for host in ["brand.github.io", "brand.netlify.app", "brand.vercel.app", "brand.pages.dev",
+                 "brand.web.app", "brand.wixsite.com", "brand.square.site", "brand.blogspot.com"]:
+        assert brand_direct.listing_eligible(host) is False, host
+
+
+@pytest.mark.parametrize("listing", ["https://www.amazon.com/stores/LeLabo/page/SYNTHETIC",
+                                     "https://www.sephora.com/product/le-labo-santal-33",
+                                     "https://www.nordstrom.com/s/le-labo-santal-33/5000033",
+                                     "https://www.ulta.com/p/santal", "https://www.farfetch.com/shopping/x",
+                                     "https://shop.app/products/123"])
+def test_C5_marketplaces_and_multibrand_retailers(listing):
+    site = brand_direct._site(host_of(listing))
+    sources = [("https://en.wikipedia.org/wiki/X", f"Le Labo runs an official storefront on {site}."),
+               ("https://www.vogue-synthetic.com/x", f"Le Labo is available at {site}, its official store there.")]
+    assessment, sms = run(listing, sources)
+    assert_not_brand_direct(assessment, sms)
+    assert "official store" not in assessment.summary.lower()
+
+
+def test_C7_agreeing_unvetted_pages_are_not_enough():
+    spam = [(f"https://www.{d}/le-labo", "The official Le Labo site is lelabo-outlet-sale.com.")
+            for d in ("best-perfume-deals.net", "scent-reviews-synthetic.org", "top10-fragrance-synthetic.com")]
+    forged = [identity(s, e, "https://lelabo-outlet-sale.com/x", evidence_type="official") for s, e in spam]
+    assert_not_brand_direct(*run("https://lelabo-outlet-sale.com/x", [], extra=forged))
+    # The same three pages naming the real domain are still not enough without a reference source.
+    real = [(s, "The official Le Labo site is lelabofragrances.com.") for s, _ in spam]
+    assert_not_brand_direct(*run(BRAND_URL, real))
+    # The real brand linking to the lookalike as a partner does not make it official.
+    partner = [("https://www.lelabofragrances.com/partners", "Our partner lelabo-outlet-sale.com."),
+               ("https://en.wikipedia.org/wiki/Le_Labo", WIKI)]
+    assert_not_brand_direct(*run("https://lelabo-outlet-sale.com/x", partner))
+
+
+def test_C8_user_text_and_plan_brand_never_create_the_mapping():
+    listing = "https://lelabo-outlet-sale.com/santal"
+    request = ShoppingRequest(request_id="bd", message_text=f"Le Labo official store {listing}")
+    plan = OrchestratorPlan(request_id="bd", intent="evaluate_purchase", product_url=listing, brand="Le Labo")
+    assessment = decide(request, plan, [])
+    assert_not_brand_direct(assessment, format_sms(assessment))
+    # The search query is built from the listing domain only, never from model text.
+    provider = FakeProvider([])
+    asyncio.run(SellerResearch(provider).brand_direct_with_status(
+        plan_for(listing, brand="lelabofragrances.com official")))
+    assert provider.queries == ['"lelabo-outlet-sale.com" official website']
+
+
+def test_C9_other_brand_on_the_real_domain_gets_no_brand_direct_wording():
+    assert_not_brand_direct(*run(BRAND_URL, GOOD, brand="Byredo"))
+
+
+def test_C11_provider_records_cannot_change_the_listing_host():
+    # Records relabeled as being about the real domain do not apply to a lookalike listing.
+    relabeled = [identity(s, e, BRAND_URL) for s, e in GOOD]
+    assert_not_brand_direct(*run("https://lelabo-outlet-sale.com/x", [], extra=relabeled))
+
+
+@pytest.mark.parametrize("brand", [None, "Le Labo"])
+def test_C12_brand_direct_wording_never_overclaims(brand):
+    assessment, sms = run(BRAND_URL, GOOD, brand=brand)
+    for text in (assessment.summary.lower(), sms.lower().replace("product authenticity is not established.", "")):
+        assert not any(word in text for word in BANNED_WORDS), text
+        assert "authentic" not in text
+
+
+def test_C13_unknown_seller_with_low_price_is_not_fraud():
+    request = ShoppingRequest(request_id="bd", message_text="https://small-candle-synthetic.com/p $1")
+    plan = OrchestratorPlan(request_id="bd", intent="evaluate_purchase",
+                            product_url="https://small-candle-synthetic.com/p", purchase_price="1")
+    assessment = decide(request, plan, [])
+    assert assessment.seller_risk == "INSUFFICIENT_EVIDENCE" and assessment.decision == "VERIFY_FIRST"
+
+
+def test_C15_reference_registry_is_immutable_and_plain_ascii():
+    assert isinstance(brand_direct.REFERENCE_SOURCES, frozenset)
+    for site in brand_direct.REFERENCE_SOURCES:
+        assert site == site.lower() and site.isascii() and not site.startswith("xn--") and "." in site

@@ -104,7 +104,7 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
             summary = "Official seller authorization supports lower seller risk. Consider buying after checking listing and return terms."
             selected = authorized
             missing = ["Authorization does not establish product authenticity."]
-        elif not adverse and (direct := brand_direct.assess(host, relevant, plan.brand)).confirmed:
+        elif not adverse and (direct := brand_direct.assess(plan.product_url.host, records, plan.brand)).confirmed:
             # The brand selling on its own site needs no reseller authorization.
             # Still VERIFY_FIRST/INSUFFICIENT_EVIDENCE: the support is unverified
             # search excerpts, and nothing here establishes authenticity.

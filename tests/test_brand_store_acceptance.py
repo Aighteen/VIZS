@@ -476,8 +476,7 @@ def test_brand_store_promise_rows_show_what_the_page_states(store):
     assert_no_accusation(text)
 
 
-@END_GOAL
-@pytest.mark.parametrize("store", BRANDS, ids=lambda s: s.name)
+@pytest.mark.parametrize("store", BRANDS, ids=lambda s: s.name)  # lane C: was END_GOAL xfail
 def test_END_GOAL_brand_store_named_official_by_two_independent_sources(store):
     scenario = brand_scenario(store)
     assessment, text = evaluate(scenario)
@@ -498,7 +497,6 @@ def test_END_GOAL_extract_answering_with_canonical_url_still_reads_the_listing()
     assert_quotes_are_spans(assessment, scenario)
 
 
-@END_GOAL
 def test_END_GOAL_official_domain_written_with_www_or_sentence_period():
     # Real snippets often write "www.aesop.com" or end a sentence with the domain.
     independent = (
