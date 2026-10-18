@@ -13,6 +13,17 @@ from app.research.provider import ResearchUnavailable, SearchResponse, SourceRec
 from app.research.url_safety import UnsafeURL, public_url, same_page_key
 
 
+def _canonical_answer(returned, by_page, returned_url):
+    """A provider may answer a ``?variant=`` listing under the product's canonical URL
+    (Shopify). Same host and identical path, with content parameters only dropped
+    (never added or changed), for exactly one requested URL. The record then keeps
+    the provider's canonical URL, because that is the page the text came from."""
+    candidates = by_page.get(returned[:2], [])
+    if len(candidates) != 1 or not set(returned[2]) < set(candidates[0][2]):
+        return None
+    return public_url(returned_url).split("#", 1)[0]
+
+
 class TavilyProvider:
     def __init__(self, api_key: str | None, *, transport=None, timeout: float = 8, max_results: int = 5,
                  extract_timeout: float | None = None):
@@ -109,13 +120,19 @@ class TavilyProvider:
         # encoding, tracking parameters). Same host+path+content query is the same
         # page; the record keeps the URL we admitted, never the provider's spelling.
         requested = {}
+        by_page = {}
         for url in admitted:
-            requested.setdefault(same_page_key(url), url)
+            key = same_page_key(url)
+            requested.setdefault(key, url)
+            by_page.setdefault(key[:2], []).append(key)
         for item in payload["results"][:3]:
             if not isinstance(item, dict) or not isinstance(item.get("raw_content"), str):
                 continue
             try:
-                url = requested.get(same_page_key(item.get("url")))
+                returned = same_page_key(item.get("url"))
+                url = requested.get(returned)
+                if url is None:
+                    url = _canonical_answer(returned, by_page, item.get("url"))
             except UnsafeURL:
                 continue
             # Reject substituted/redirect destinations. Provider may return partial success.

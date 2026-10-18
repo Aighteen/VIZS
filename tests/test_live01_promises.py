@@ -88,7 +88,7 @@ def test_tavily_respelled_same_page_is_accepted_under_admitted_url(returned):
     "https://shop.lelabofragrances.com/santal-33-147.html?bvstate=pg%3A2%2Fct%3Ar",  # other subdomain
     "https://www.lelabofragrances.com/another-33-100.html?bvstate=pg%3A2%2Fct%3Ar",  # other path
     "https://www.lelabofragrances.com/santal-33-147.html?bvstate=pg%3A3",  # other content query
-    "https://www.lelabofragrances.com/santal-33-147.html",  # content query dropped
+    "https://www.lelabofragrances.com/santal-33-147.html?bvstate=pg%3A2%2Fct%3Ar&color=red",  # content param added
     "http://127.0.0.1/santal-33-147.html",  # private destination
 ])
 def test_tavily_different_page_is_still_rejected(returned):
@@ -337,3 +337,34 @@ def test_fallback_is_only_for_timeouts_and_only_quotes_merchant_pages():
     sheet, _ = fallback_sheet(TimeoutError(), content="Santal 33. Free shipping on every order. Notes of cardamom.")
     assert all(r.status == "unavailable" for r in sheet.records)
     assert all("promise reader timed out; 0 rows taken from page wording." in r.explanation for r in sheet.records)
+
+
+VARIANT = "https://www.allbirds.com/products/mens-wool-runners?variant=40195939811408"
+PRODUCT = "https://www.allbirds.com/products/mens-wool-runners"
+
+
+@pytest.mark.parametrize("returned", [PRODUCT, PRODUCT + "/", PRODUCT + "#details", "https://allbirds.com/products/mens-wool-runners"])
+def test_canonical_answer_for_variant_listing_is_kept_under_the_canonical_url(returned):
+    records = extract_with(returned, admitted=VARIANT)
+    assert len(records) == 1 and records[0].source_url == returned.split("#")[0]
+    # Dropping the content query is the canonical page of the same product (lane A).
+    assert [r.source_url for r in extract_with(CLEAN.split("?")[0])] == [CLEAN.split("?")[0]]
+
+
+@pytest.mark.parametrize("returned", [
+    PRODUCT + "?variant=1",  # different variant: changed, not dropped
+    PRODUCT + "?variant=40195939811408&size=9",  # added parameter
+    "https://www.allbirds.com/products/womens-wool-runners",  # other path
+    "https://shop.allbirds.com/products/mens-wool-runners",  # other host
+    "https://allbirds.co/products/mens-wool-runners",  # lookalike
+    "https://www.allbirds.com/collections/mens",  # other page
+])
+def test_canonical_rule_never_crosses_hosts_paths_or_variants(returned):
+    assert extract_with(returned, admitted=VARIANT) == []
+
+
+def test_canonical_rule_needs_one_unambiguous_request():
+    def handler(request):
+        return httpx.Response(200, json={"results": [{"url": PRODUCT, "raw_content": PAGE_TEXT}]})
+    provider = TavilyProvider("fixture", transport=httpx.MockTransport(handler))
+    assert run(provider.extract_sources([VARIANT, PRODUCT + "?variant=2"])) == []

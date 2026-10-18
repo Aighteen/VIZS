@@ -488,7 +488,6 @@ def test_END_GOAL_brand_store_named_official_by_two_independent_sources(store):
     assert_no_accusation(text)
 
 
-@pytest.mark.xfail(strict=False, reason="end goal: lanes A/B/C (Shopify ?variant listing, canonical extract URL)")
 def test_END_GOAL_extract_answering_with_canonical_url_still_reads_the_listing():
     # Tavily may answer a Shopify ?variant= listing under the canonical product URL.
     scenario = brand_scenario(ALLBIRDS, canonical=True)
