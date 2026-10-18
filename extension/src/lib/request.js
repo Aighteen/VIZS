@@ -37,8 +37,13 @@ export function listingUrlFromSender(sender) {
   return { ok: true, value: href };
 }
 
+/**
+ * The tab href is wrapped in angle brackets so the backend takes it verbatim, including a
+ * trailing ".", "?", "!", ";", ":" or unmatched ")" (QA-07). safeHttpUrl output never
+ * contains a raw "<", ">" or whitespace, so the brackets are an unambiguous boundary.
+ */
 export function buildMessageText(listingUrl, price) {
-  return `Check this listing ${listingUrl}` + (price ? ` price ${price}` : "");
+  return `Check this listing <${listingUrl}>` + (price ? ` price ${price}` : "");
 }
 
 /**

@@ -23,11 +23,11 @@ test("QA Q1: extension requests always declare application/json and carry no ext
   assert.doesNotThrow(() => JSON.parse(req.init.body));
 });
 
-test("QA-07 precondition: Chrome-style hrefs keep trailing punctuation and are sent verbatim at the end of message_text", () => {
+test("QA-07: Chrome-style hrefs keep trailing punctuation and are sent verbatim inside angle brackets", () => {
   for (const [href, price] of END_PUNCTUATION) {
     const tab = listingUrlFromSender({ tab: { url: href } });
     assert.deepEqual(tab, { ok: true, value: href }, href);
-    const expected = `Check this listing ${href}` + (price ? ` price ${price}` : "");
+    const expected = `Check this listing <${href}>` + (price ? ` price ${price}` : "");
     assert.equal(buildMessageText(href, price), expected);
   }
 });

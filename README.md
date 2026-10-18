@@ -67,7 +67,7 @@ Keys alone never enable provider calls. `VIZS_PROVIDER_MODE=live` (or `dev_serve
 | `POST /api/v1/evaluate` | Local developer evaluation; body `{request_id, message_text, channel: "debug"}`; returns the `Assessment`. Requires `Content-Type: application/json` (else 415); any request with an `Origin` header gets 403 (not for browsers) |
 | `POST /api/v1/evaluate-message` | Loopback bridge used by the Spectrum test bridge; returns `{assessment, message_text}`. Same JSON-only / no-`Origin` rule as `/evaluate` |
 | `POST /api/v1/extension/evaluate` | Extension route: same body and response as `evaluate-message`, plus pairing, Origin allowlist and budget checks (below); also requires `application/json` (415) |
-| `POST /api/v1/mock/messages` | Opt-in simulator (`VIZS_ENABLE_MOCK_SMS=true`); body `{"event_id","text"}`; **not Photon JSON**, output labeled `MOCK SIMULATION` |
+| `POST /api/v1/mock/messages` | Opt-in simulator (`VIZS_ENABLE_MOCK_SMS=true`); body `{"event_id","text"}`; **not Photon JSON**, output labeled `MOCK SIMULATION`. 404 when disabled; when enabled, the same JSON-only / no-`Origin` rule as `/evaluate` (403, 413 for a declared oversized body, 415), checked before the body is read |
 | `POST /webhooks/photon` | Always 503; no Photon callback, auth or ACK contract is assumed |
 
 Offline request (macOS):

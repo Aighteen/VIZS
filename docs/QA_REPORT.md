@@ -182,3 +182,33 @@ Observations: extension `host_permissions` cover only port 8000 (dev_server defa
 Observations (no xfail):
 - QA-03 regression: a possessive after a host ("Is https://shop.com's listing ok?") now yields no URL, because the apostrophe is kept, so the bot asks for a URL.
 - Bare IPv4 with a path (`203.0.113.9/claim`) and `tel:` numbers in quotes are not neutralized. Whether they become tappable is not verified.
+
+## Round 2 resolution (branch `fix/qa-round2`, commit `15a9348`)
+
+All round-2 findings and Q6-Q8 were implemented as the human decided. New tests: `tests/test_qa_round2_fixes.py` (82). The 13 round-2 strict xfails are removed and now pass.
+
+| Item | Resolution |
+|---|---|
+| Q6 / QA-01 | `app/decision/rules.py`: evidence anywhere under the listing seller's registrable domain (seller host, subdomains, parent) never authorizes LOWER_RISK. The registrable domain uses a small built-in list of multi-label public suffixes (`co.uk`, `com.au`, `co.jp`, `com.br`, ...), otherwise the last two labels. **Limitation:** this is not the Public Suffix List. A suffix missing from the list (for example `github.io`, or a rarer second-level ccTLD) makes more hosts count as the seller's site, which can only withhold LOWER_RISK. `store.brand.com` + `brand.com` is now VERIFY_FIRST (accepted). |
+| Q7 | `app/api/routes.py`: `/api/v1/mock/messages` returns 404 when disabled (first). When enabled, it applies the same rule as `/evaluate`: any `Origin` gives 403, a declared oversized body gives 413, non-JSON gives 415, all before the body is read. |
+| QA-06 / Q8 | `app/decision/promises.py`: origin wording matches whole words/phrases, case-insensitive. "Original", "Aboriginal" and "consent from" no longer count. "warehouse" in an unrelated sentence still counts (accepted, lexical). |
+| QA-08 + choice (b) | `app/decision/sms.py`: bare domains in quotes/conditions are neutralized only when they end in a real TLD: a built-in list of common generic TLDs, every two-letter ASCII code, `xn--` punycode, or an all-Unicode TLD (`.рф`). Labels may be Unicode, and `。`, `．`, `｡` count as dots. Scheme URLs, `www.`, `mailto:`/`tel:`/`sms:`/`javascript:`/`data:`, and IPv4 literals (with optional port/path) are always neutralized. "2-3 days.Free returns", "Dr.Smith", "No.5", "U.S." and "$89.99" survive. A non-TLD candidate's path is still scanned, so `days.Free/phish.com` cannot hide a domain. |
+| QA-07 | `extension/src/lib/request.js` now sends `Check this listing <URL>[ price $X.XX]`. `app/services/grok.py:_trim_url` treats `<...>` as an exact boundary and trims nothing inside it, so trailing `.`, `?`, `!`, `;`, `:` and an unmatched `)` are kept. The prose rule for phone messages is unchanged. The system prompt tells Grok to return a bracketed URL character for character, and validation still requires the model URL to equal a user-supplied URL. |
+| Spectrum tests | `npm test` now includes `src/qa-round2.test.mjs`. |
+| Possessive | Fixed (trivial and consistent): a host cannot contain `'`, so an apostrophe in the authority ends the URL. "Is https://shop.com's listing ok?" yields `https://shop.com/`. An apostrophe in a path is still part of the URL (`.../it's-50ml`). |
+
+Test changes (each one follows from a decision):
+- `tests/test_qa_round2.py`: removed 3 strict-xfail markers (QA-06, QA-07, QA-08). `extension_message()` now builds the bracketed format, because QA-07 changed the extension's message format.
+- `tests/qa_fixtures/extension_message_texts.json`: `message_text` strings use the bracketed format (same reason). The URL and price assertions are unchanged.
+- `extension/test/{request,controller,qa-extension,qa-round2}.test.js`: expected `message_text` uses `<URL>` (same reason). No other assertion changed.
+
+**Accepted residual risks (QA-08):**
+- Prose whose suffix happens to be a real TLD is still replaced: "Eau.de Parfum" (`.de`), "50ml.It ships" (`.it`), any `word.co`/`word.me`. No common-word heuristic was added, because safety wins.
+- Two-letter codes are treated as ccTLDs even when unassigned.
+- A real TLD missing from the built-in generic list (for example `.boutique` is listed, `.free` and `.new` are not) is not neutralized when written without a scheme or `www.`. iMessage linkification of such text was not verified offline.
+- Phone numbers without `tel:` are not neutralized.
+
+Commands on `fix/qa-round2`:
+- `python -m pytest -q -p no:cacheprovider`: **548 passed**, 0 xfailed.
+- `cd extension && node --test test/*.test.js`: **77 pass**.
+- `cd app/adapters/spectrum && npm ci && npm test`: **38 pass**, 0 todo (includes `qa-round2.test.mjs`).

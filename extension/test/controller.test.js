@@ -52,7 +52,7 @@ test("check sends one request with URL from sender.tab.url and channel debug", a
   assert.equal(res.state.name, "searching");
   assert.equal(t.calls.length, 1);
   assert.equal(t.calls[0].init.headers.Authorization, "Bearer synthetic-token");
-  assert.deepEqual(t.lastBody(), { request_id: "req-1", message_text: `Check this listing ${LISTING} price $50`, channel: "debug" });
+  assert.deepEqual(t.lastBody(), { request_id: "req-1", message_text: `Check this listing <${LISTING}> price $50`, channel: "debug" });
 });
 
 test("duplicate clicks while searching send exactly one request", async () => {

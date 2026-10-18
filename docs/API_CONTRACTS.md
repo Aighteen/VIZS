@@ -10,7 +10,7 @@ These are **team-owned internal interfaces**, not real Photon 2.0 payload specif
 | `POST /api/v1/evaluate` | Local direct evaluation, bypasses Photon transport but uses same core workflow | Grok + search for live mode; injected mocks for tests |
 | `POST /api/v1/evaluate-message` | Loopback bridge: same evaluation, returns `{assessment, message_text}` | Same as evaluate |
 | `POST /api/v1/extension/evaluate` | Extension route: same body/response as evaluate-message; bearer pairing token, origin allowlist, rate/inflight budget checked before provider work | Same as evaluate |
-| `POST /api/v1/mock/messages` | Opt-in local simulator, `{event_id, text}`, labeled mock; not Photon JSON | None (mock transport) |
+| `POST /api/v1/mock/messages` | Opt-in local simulator, `{event_id, text}`, labeled mock; not Photon JSON. 404 when disabled; otherwise any `Origin` -> 403, declared oversize -> 413, non-JSON -> 415 before the body is read (Q7) | None (mock transport) |
 | `POST /webhooks/photon` | Implemented as a fixed 503. Future: real inbound adapter, security checks, idempotency, prompt acknowledgement | Photon 2.0 verified docs |
 | `GET /api/v1/assessments/{id}` (optional) | Not implemented | Requires storage choice |
 
