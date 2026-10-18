@@ -1,52 +1,52 @@
-# Project brief — AI-powered shopping decision assistant
+# Project brief - fragrance shopping assistant through Photon and an animated browser pet
 
-**Source:** team-supplied Cursor project plan, adapted for a hackathon P0. **Status:** concept and proposed contracts, **not confirmed implementation**.
+Current user-approved direction: both Photon messaging and a Chrome extension with an animated on-page shopping pet. They are core channels sharing the existing evidence-backed backend. See EXTENSION_SCOPE.md for acceptance criteria and boundaries. This update defines scope, not completed extension implementation.
+
+## Credibility-checking update from the supplied Kept brief
+
+Use a promise-first explanation: what the merchant promises, what retrieved sources say, and what remains unknown. Topics: shipping origin, processing/arrival estimates, return destination/cost/conditions, domain-registration context and photo reuse. AI-photo detection remains deferred without validated model evidence. Each line needs genuine source provenance and quoted spans; merchant wording is not proof of fulfillment. See CREDIBILITY_CHECKING.md for contracts, rules, staged tasks and exclusions. These capabilities are specified, not yet implemented. Both Photon and the extension remain core; the reference's broader payments/tracker/training scope is not adopted.
 
 ## Customer and problem
 
-Shoppers buying fragrances online cannot easily distinguish reliable sellers, legitimate gray-market listings, unusual discounts, and unproven counterfeit allegations. They also have trouble comparing rewards among cards they already own.
+Fragrance shoppers need to judge seller credibility without treating unknown sellers, gray-market listings or large discounts as proof of fraud. The assistant should offer actionable advice with traceable sources and honest uncertainty while they browse.
 
-**Core proposition:** "Before you buy, know whether the seller is trustworthy, whether the price is reasonable, and which credit card gives you the best value."
+## Browser journey
 
-## One-minute demo
+1. Open a fragrance product listing and activate the extension.
+2. Click the pet's Check seller button; submit the page URL and optional confirmed price.
+3. Pet shows Searching while FastAPI runs Grok extraction, Tavily research, source validation and deterministic Python policy.
+4. Pet signals completion; its panel shows seller risk, buying advice, source links and remaining unknowns.
+5. If evidence is weak, show VERIFY_FIRST with unverified references and verification steps. Failures have separate error/retry states.
 
-1. User sends a sample fragrance listing URL by **real SMS** to the team agent's Photon 2.0 messaging channel.
-2. FastAPI receives a verified Photon event and processes it; Grok extracts the URL and research objectives.
-3. A single research provider retrieves available seller evidence and its URLs. Python validates claim/source relationships and risk policy.
-4. Photon sends back a short SMS: classification, buying advice, one or two grounded evidence links, and honest uncertainty.
-5. Show one negative example (`INSUFFICIENT_EVIDENCE`) rather than a fabricated certainty. A simulation is acceptable for development but **not evidence of a live Photon integration**.
+## Photon journey
 
-## P0 — demo-critical
+A registered shopper messages a listing URL and optional price; Photon carries the assessment back with source links and uncertainty. It uses the same backend and decision policy as the extension. Preserve the confirmed iMessage flow; SMS and public/persistent deployment still need verification.
 
-- [ ] Live inbound and outbound Photon 2.0 message (subject to verified access and beta capability)
-- [ ] Functional FastAPI and local `/api/v1/evaluate` path
-- [ ] Grok structured extraction (or clear fallback if blocked)
-- [ ] One search provider with traceable source URLs
-- [ ] Source validation and conservative deterministic decision rules
-- [ ] Concise response, error and timeout behavior
+## P0 - both channels (extension release pending)
 
-## P1 — after P0 success
+- Reproducible Photon launch/stop, registered inbound evaluation and cited reply, with duplicate/failure handling.
+- Chrome extension with on-page pet and compact result panel.
+- User-triggered active-page URL capture; optional editable price.
+- Honest idle/searching/finished/error states; reviewing-sources animation only with a real backend phase signal.
+- Keyboard access, movable/dismissible pet and reduced-motion support.
+- Existing FastAPI/Grok/Tavily/policy pipeline reused; API keys remain server-side.
+- Safe backend access, bounded requests and source rendering before public use.
+- Offline fixture coverage and one authorized live extension assessment.
 
-- [ ] Compare identical fragrance sizes/concentrations/editions and date/merchant-specific prices
-- [ ] Optimize rewards across manually provided card names and known rules using deterministic arithmetic
-- [ ] SMS DETAILS follow-up for richer sources
-- [ ] Optional parallel tools, persistence, or hosted dashboard if genuinely needed
+## Implemented foundation
 
-## P2 — not before deadline
+Packets A-D and runtime wiring are pushed at checkpoint f5af5ba. Last implementation check: 116 Python tests and four bridge tests passed. Registered-phone iMessage -> Grok -> Tavily -> policy -> cited reply was confirmed received by the user. The extension itself is absent. Current snippets remain unverified; stronger official-source validation is still needed for useful stronger conclusions.
 
-Multiple deployed autonomous agents, real user account/banking connections, automated checkout, Visa TAP, historical calibrated fraud probability, generalized product categories, large scraped datasets.
+## Photon channel and deferred work
 
-## Correctness commitments
+Photon messaging remains core; retain the tested bounded Spectrum iMessage bridge and add a reproducible launch/stop flow. It is not verified SMS or an always-on deployed service. Pricing comparisons, card rewards, DETAILS/history and additional browsers/product categories are P1 only after both-channel P0. Pet cosmetics and multiple pets are deferred.
 
-- `LOWER_RISK` ≠ verified genuine; `HIGHER_RISK` ≠ legally established scam; `INSUFFICIENT_EVIDENCE` means we cannot conclude.
-- Manufacturer authorization is a distinct verifiable question from authenticity; gray-market goods may be authentic.
-- Treat public complaints/reviews as allegations unless independently established.
-- No invented evidence URLs or numeric probability, no PAN/CVV/banking passwords via SMS.
+Autonomous purchasing, banking linkage, payment credentials, massive scraping, fine-tuning, fraud percentages and multi-agent infrastructure are outside scope.
 
-## Unresolved human decisions
+## Correctness and privacy
 
-- [ ] Confirm team roster/owners and live Photon 2.0 beta access
-- [ ] Confirm working Grok credentials and supported structured-output model
-- [ ] Choose Tavily vs native Grok Web Search (not both for first integration)
-- [ ] Hosting/public HTTPS decision and working deployment
-- [ ] Whether card comparison makes the final demo; do not let it threaten P0
+LOWER_RISK does not verify authenticity. HIGHER_RISK is not a legal fraud finding. Unknown authorization and low price are not counterfeit proof. Reviews/snippets remain allegations or unknowns until grounded. Every factual reason must trace to an actually returned source. No secrets or sensitive payment data in the extension, page scripts, Git or SMS. No passive browsing-history collection.
+
+## Human decisions and event constraints
+
+Assign the new extension owner, choose pet appearance, and decide backend hosting/access configuration. Humans still finalize title/side tracks and submit. Both-channel scope does not establish sponsor eligibility. Mandatory draft/final deadlines and coding-window constraints in SPRINT_PLAN.md remain unchanged; preserve upload buffers.

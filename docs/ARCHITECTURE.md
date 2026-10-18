@@ -5,22 +5,24 @@
 One Python FastAPI service and one orchestrating Grok call, with backend-owned tools and deterministic policy. Calling three research functions is **not** equivalent to needing three separately hosted agents.
 
 ```
-[User SMS] -> [Photon 2.0 verified inbound adapter] -> [FastAPI event handler]
-                                                   |
-                                      [job / in-process task*]
-                                                   v
-                        [Grok classify into validated Intent + tasks]
-                                                   v
-                   [Backend allowed search provider: Tavily OR Grok web]
-                                                   v
-                  [Normalize Evidence: real URL, quote/claim, type, time]
-                                                   v
-               [Python policy: risk and action, no arbitrary probability]
-                                                   v
-                  [SMS formatter] -> [Photon outbound adapter] -> [User]
+[Chrome extension: user activates pet, clicks Check seller]
+               | current listing URL + optional confirmed price
+               v
+[FastAPI client boundary: access control/cost bounds - extension setup pending]
+               v
+[Grok validated plan] -> [Tavily records] -> [source validation]
+               v
+[Python policy: risk, decision, references, research status, unknowns]
+               v
+[Pet result panel: advice, labeled links, verification steps]
 
-Developer pathway: POST /api/v1/evaluate -> same orchestrate/research/policy modules
+Second core channel (existing bounded implementation):
+[Registered iMessage] -> [bounded Spectrum bridge] -> [same workflow]
+                   <- [formatted cited reply]
 ```
+
+Photon messaging and the extension are both core channels sharing one workflow and risk policy. The extension UI and public access configuration are proposed, not implemented. See EXTENSION_SCOPE.md. The existing API returns a final result with no stage events: animate Searching until completion; do not fabricate a source-review stage. Runtime remains one Python service/orchestrator. Provider keys never enter extension code. Existing debug-only channel contracts remain until A/D agree any client boundary changes.
+
 
 `*` For very short MVP processing, a FastAPI `BackgroundTasks`-style job can keep webhook acknowledgement fast, **but does not survive process restarts**. If losing jobs is unacceptable, use a real queue or durable state. Do not pretend the in-process prototype is production reliable.
 
@@ -57,10 +59,10 @@ Developer pathway: POST /api/v1/evaluate -> same orchestrate/research/policy mod
 - **Rate/cost bounds:** cap research tool calls, output length, retries and timeout; avoid infinite Grok tool-call loops.
 - **Demo integrity:** `mock` flag and visible disclaimer when using mock providers; record the last confirmed live SMS round trip.
 
-## Decision records to make immediately
+## Current decisions and remaining work
 
 - Photon inbound event fields/auth: **UNVERIFIED** until beta docs/account tested.
-- Grok structured output + model: supported in current xAI docs for appropriate models, but team key/model availability **UNVERIFIED**.
-- Search: Tavily (explicit URL records) preferred if key available; otherwise Grok native web search if citations are accessible in actual response format.
+- Grok structured output: a live registered-phone evaluation completed; preserve account/model limitations and bounded timeouts.
+- Search: Tavily is implemented and exercised live; keep one provider. Stronger source validation remains pending.
 - Persistence: in-memory for demo only; upgrade only for repeat messages and restart resilience if needed.
 - Hosting: any provider giving Python FastAPI public HTTPS and compatible background execution; deployment not assumed complete.

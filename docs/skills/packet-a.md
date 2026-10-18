@@ -26,4 +26,4 @@ The independent mock event is not a Photon wire contract.
 
 Once manifest/tests exist, run `python -m pytest tests/test_api.py tests/test_photon.py tests/test_jobs.py -q` in the project environment. This is a proposed command, not a recorded result.
 
-Handoff using `docs/AGENT_HANDOFF.md`. A coordinates merges/deadlines; humans submit. Frontend work requires explicit assignment and must not delay the SMS flow.
+Handoff using `docs/AGENT_HANDOFF.md`. A coordinates merges/deadlines; humans submit. Current Photon-plus-extension scope is in `docs/EXTENSION_SCOPE.md`. Frontend owner/session for `extension/` remains unassigned; A owns the backend boundary and coordination. Photon is core; preserve the tested channel and provide a reproducible launch/stop flow.

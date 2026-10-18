@@ -1,5 +1,8 @@
 # Sprint plan — Saturday Oct 17 to Sunday Oct 18, 2026 (PDT)
 
+Current scope update: both Photon messaging and the Chrome extension with an animated on-page pet are core channels. Read EXTENSION_SCOPE.md and NEXT_STEPS.md for the current critical path. The timeline below is the original SMS-first plan, not a fresh schedule or proof of completion. Event deadlines, coding-window constraints and upload buffers remain unchanged. Limit the new UI to the minimal pet/result flow; do not let optional pet cosmetics or unrelated work consume the submission buffer.
+
+
 **Time source:** organizers' Hacker Guide. Adjust remaining work to actual current time; never miss submission to finish a feature.
 
 ## Absolute deadlines

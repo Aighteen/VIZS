@@ -1,10 +1,10 @@
-# DubHacks '26 â€” AI Shopping Assistant Agent Kit (v2)
+# VIZS - fragrance shopping assistant
 
-**Project:** SMS-first, evidence-backed shopping decision assistant for fragrance purchases.
+**Project:** Evidence-backed fragrance seller assessments through both Photon messaging and a Chrome extension with an animated on-page shopping pet.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent.
 **Status:** Packets A-D merged on `feat/packet-a-integration`; 116 offline tests pass. Runtime wiring is implemented locally; default offline mode makes no provider calls. A registered-phone iMessage test completed through Grok and Tavily; the user confirmed receipt of the reply with unverified source links.
-**Current phase:** Offline pipeline assembled; live-provider verification next. See [next steps](docs/NEXT_STEPS.md).
-**Immediate next step:** Verify the configured providers with separately authorized live probes. Paid API calls still require instruction. Humans finalize tracks.
+**Current phase:** Extension scope approved; frontend not implemented. Existing backend and cited iMessage round trip tested. See [next steps](docs/NEXT_STEPS.md).
+**Immediate next step:** Assign the extension owner and build the pet shell/result panel against offline fixtures; A defines safe backend access. See [extension scope](docs/EXTENSION_SCOPE.md). Paid API calls still require instruction. Humans finalize tracks.
 
 ## Run the local API
 
@@ -127,13 +127,11 @@ docs/PROJECT_BRIEF.md
 
 Read `docs/INTEGRATION_RUNBOOK.md` for integration blockers and the order to verify services.
 
-## Product MVP, not a generic full-stack app
+## Current product MVP
 
-One real customer journey: **SMS with fragrance URL -> Photon inbound -> FastAPI -> Grok request classification -> a single research provider -> evidence validation -> deterministic seller-risk decision -> response through Photon**.
+User activates the Chrome extension on a fragrance listing -> clicks the animated pet -> FastAPI/Grok/Tavily research -> deterministic seller assessment -> pet result panel with labeled source links and uncertainty. Show Searching while the request is pending; later phases require real backend signals. See `docs/EXTENSION_SCOPE.md` for acceptance criteria. The extension itself has not been built.
 
-A developer-only `POST /api/v1/evaluate` endpoint runs the same pipeline *without* Photon and is essential for early local testing. A true Photon success requires an end-to-end delivered message, not a mocked send.
-
-Credit-card optimization, exact-match multi-merchant price comparison, Redis, PostgreSQL, and multi-agent orchestration are optional until P0 works.
+Photon messaging and the extension are both core channels; the tested iMessage path is retained. SMS transport, public hosting and an always-on service remain unverified. Existing API setup below supports backend development, not an installed extension.
 
 ## Implementation gate checks
 
@@ -171,4 +169,9 @@ One registered-phone iMessage test completed: valid Grok extraction, Tavily retu
 
 The bounded bridge is `app/adapters/spectrum/src/test-bridge.mjs` (the default `npm start` remains the original echo agent). It requires Photon project credentials, `VIZS_REGISTERED_RECIPIENT` obtained from the project's opted-in registered user, and `VIZS_LOCAL_API=http://127.0.0.1:<port>/api/v1/evaluate-message`. Run the Python API on loopback with explicitly authorized live mode; run only one listener per project. Recipient/project credentials are supplied through process environment, never source code. The original live test used a temporary hidden supervisor that stopped both processes after the bounded evaluation; that local supervisor is not part of the repository. A reusable launch/stop command is the next operational improvement.
 
-Next: make the bounded launcher reproducible, improve manufacturer/seller/brand/region source validation, then stabilize a persistent messaging/demo path. Continue using conservative unknown outcomes; do not promote snippets to verified facts for a favorable demo.
+Next: build the user-triggered extension/pet shell and safe backend boundary, improve manufacturer/seller/brand/region source validation, then validate a live extension demo. A reproducible Photon launch/stop flow is also part of P0. Continue using conservative unknown outcomes; do not promote snippets to verified facts for a favorable demo.
+
+
+## Credibility direction: merchant promises and evidence
+
+The user-supplied Kept brief guides the next credibility-checking iteration: compare merchant promises with cited evidence for shipping, arrival and return terms, with careful domain-registration and image-reuse context. See [credibility specification](docs/CREDIBILITY_CHECKING.md). This is planned work; the current code still returns conservative seller assessments with unverified source links. Both Photon and the pet extension remain core. Payments, tracking, dispute filing and custom model training are not part of this change.

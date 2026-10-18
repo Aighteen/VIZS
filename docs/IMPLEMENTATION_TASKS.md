@@ -1,5 +1,14 @@
 # Parallel implementation tasks — ownership and acceptance criteria
 
+## Credibility-checking sequence update
+
+CREDIBILITY_CHECKING.md maps the user's Kept reference into the existing backend: D promise contracts/fixtures first, C provenance/content retrieval, B schema extraction, D rules/formatting and A integration for both channels. No additional agents, model training, payment integration or dispute handling are authorized by this documentation update. Keep original packet history below; use the new specification for next acceptance criteria.
+
+## Scope update: Photon and extension are both core
+
+Current next tasks are in EXTENSION_SCOPE.md and NEXT_STEPS.md. Build a Chrome on-page pet/result UI around the existing backend while retaining Photon as a core messaging path. Extension area extension/ is unassigned. P0 acceptance: a reproducible registered-phone request/reply path plus user-triggered extension listing URL, honest progress, labeled citations/unknowns, keyboard/reduced motion, duplicate-call bounds, server-side keys and safe client access. Existing backend modules are implemented; the original packet tasks below are historical planning and do not override current priorities. Extension implementation, hosting and public access controls remain pending.
+
+
 Assign **up to four students**. Team size and identities are currently unknown; one person may own several packets. Do not assume a structure already exists; adapt paths to repo.
 
 ## Contract gate (everyone; first 20–30 minutes)
