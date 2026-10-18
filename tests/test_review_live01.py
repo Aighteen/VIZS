@@ -118,13 +118,13 @@ def test_oversize_reader_reply_is_invalid_not_a_crash():
 
 # Threat-model acceptance tests for the promise-reader fix (docs/reviews/
 # BRAND_DIRECT_THREAT_MODEL.md P4-P6). They document weaknesses verified on
-# 0cf68ed; strict xfail fails once fixed, so the fixer removes the marker.
+# 0cf68ed and fixed by lane A (word-boundary, two-word, clause-negation checks).
 _POLICY = "Final sale. No returns. Ships in 30 business days from our warehouse. Prices in USD."
 
 
-def _kept(quote, region=None):
+def _kept(quote, region=None, policy=_POLICY):
     source = PromiseSource(source_id="source_1", url="https://shop.example.org/p", retrieved_at=datetime.now(timezone.utc),
-                           content=_POLICY, content_kind="merchant_page", seller_domain="shop.example.org", data_mode="mock")
+                           content=policy, content_kind="merchant_page", seller_domain="shop.example.org", data_mode="mock")
     sheet = PromiseSheet.model_validate({"seller_domain": "shop.example.org", "records": [
         {"topic": "returns", "status": "supported_as_statement", "explanation": "x", "merchant_statement": quote,
          "quotes": [{"source_id": "source_1", "quote": quote}], "conditions": {"region": region}}]})
@@ -135,16 +135,30 @@ def test_exact_clause_quote_is_kept():
     assert len(_kept("Ships in 30 business days from our warehouse.")) == 1
 
 
-@pytest.mark.xfail(strict=True, reason="P4: quote 'returns' from 'No returns.' drops the negation")
 def test_negation_dropping_quote_is_rejected():
     assert _kept("returns") == []
 
 
-@pytest.mark.xfail(strict=True, reason="P5: any 1-character span is accepted as a quote")
 def test_trivial_quote_is_rejected():
     assert _kept("e") == []
 
 
-@pytest.mark.xfail(strict=True, reason="P6: region 'US' matches inside 'USD'")
 def test_region_condition_needs_word_boundary():
     assert _kept("Ships in 30 business days from our warehouse.", region="US") == []
+
+
+def test_multiword_quote_dropping_preceding_negation_is_rejected():
+    assert _kept("returns accepted after use", policy="We do not accept returns accepted after use.") == []
+    assert _kept("returns accepted after use", policy="No questions asked: returns accepted after use within 30 days.") != []
+
+
+def test_negated_and_plain_occurrence_keeps_the_plain_one():
+    policy = "Not all items get free returns on all orders. We offer free returns on all orders."
+    assert _kept("free returns on all orders", policy=policy) != []
+    assert _kept("free returns on all orders", policy="Not all items get free returns on all orders.") == []
+
+
+def test_whole_word_region_and_short_full_sentence_still_match():
+    assert _kept("Ships in 30 business days from our warehouse.", region="USD") != []
+    assert _kept("Final sale.") != []
+    assert _kept("No returns.") != []

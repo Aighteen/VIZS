@@ -63,6 +63,45 @@ def exact_span(value: str, content: str) -> str | None:
     return content[index[start]:index[start + len(folded_value) - 1] + 1]
 
 
+# A literal span can still misquote (P4-P6, docs/reviews/BRAND_DIRECT_THREAT_MODEL.md):
+# "returns" out of "No returns.", a one-letter quote, or "US" inside "USD". Spans must
+# sit on word boundaries; quotes must have two words and must not drop a negation
+# that precedes them in the same clause.
+_NEGATION = frozenset({"no", "not", "non", "never", "without", "cannot", "can't", "cant", "don't",
+                       "dont", "doesn't", "doesnt", "won't", "wont", "nor", "neither", "none", "unable"})
+_CLAUSE_END = re.compile(r"[.!?;:\n]")
+_WORD = re.compile(r"[\w'’]+")
+
+
+def _clean_occurrence(span: str, content: str, start: int, *, negation: bool) -> bool:
+    end = start + len(span)
+    if (start > 0 and content[start - 1].isalnum() and span[0].isalnum()) or \
+            (end < len(content) and content[end].isalnum() and span[-1].isalnum()):
+        return False
+    if negation:
+        clause = _CLAUSE_END.split(content[max(0, start - 200):start])[-1]
+        before = [w.lower().replace("’", "'") for w in _WORD.findall(clause)][-6:]
+        if any(w in _NEGATION for w in before):
+            return False
+    return True
+
+
+def standalone_span(value: str, content: str, *, quote: bool = False) -> str | None:
+    """``exact_span`` that also sits on word boundaries; for quotes, it has at least
+    two words and keeps any negation of its clause. Any clean occurrence suffices."""
+    span = exact_span(value, content)
+    if span is None:
+        return None
+    if quote and (len(_WORD.findall(span)) < 2 or sum(not c.isspace() for c in span) < 8):
+        return None
+    start = content.find(span)
+    while start >= 0:
+        if _clean_occurrence(span, content, start, negation=quote):
+            return span
+        start = content.find(span, start + 1)
+    return None
+
+
 def _host(value: str) -> str:
     return value.lower().removeprefix("www.").rstrip(".")
 
@@ -92,14 +131,14 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
     rows, seen = [], set()
     for row in sheet.records:
         references = [registry.get(q.source_id) for q in row.quotes]
-        spans = [exact_span(q.quote, source.content) if source is not None else None
+        spans = [standalone_span(q.quote, source.content, quote=True) if source is not None else None
                  for q, source in zip(row.quotes, references)]
         if any(span is None or len(span) > 1200 for span in spans):
             continue
         # Keep the page's characters, never the model's spelling of them.
         row = row.model_copy(update={"quotes": [q.model_copy(update={"quote": span}) for q, span in zip(row.quotes, spans)]})
         if row.merchant_statement:
-            statement = next(filter(None, (exact_span(row.merchant_statement, q.quote) for q in row.quotes)), None)
+            statement = next(filter(None, (standalone_span(row.merchant_statement, q.quote, quote=True) for q in row.quotes)), None)
             if statement is None:
                 continue
             row = row.model_copy(update={"merchant_statement": statement})
@@ -117,14 +156,14 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
             if len({(q.source_id, q.quote) for q in row.quotes}) < 2:
                 continue
             # Different explicit regional scopes cannot become a global conflict.
-            if row.conditions.region and any(exact_span(row.conditions.region, s.content) is None for s in references):
+            if row.conditions.region and any(standalone_span(row.conditions.region, s.content) is None for s in references):
                 continue
         if row.status == "not_disclosed" and not any(s.content_kind == "merchant_page" for s in registry.values()):
             continue
         # Conditions must also be source spans: models cannot invent a region/time.
         content = "\n".join(s.content for s in references)
         stated = row.conditions.model_dump()
-        conditions = {name: exact_span(value, content) if value else None for name, value in stated.items()}
+        conditions = {name: standalone_span(value, content) if value else None for name, value in stated.items()}
         if any(value and conditions[name] is None for name, value in stated.items()):
             continue
         row = row.model_copy(update={"conditions": PromiseConditions(**conditions)})
