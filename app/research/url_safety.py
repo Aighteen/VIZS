@@ -6,7 +6,7 @@ import asyncio
 import ipaddress
 import re
 import socket
-from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlsplit, urlunsplit
 
 
 class UnsafeURL(ValueError):
@@ -35,11 +35,13 @@ def strip_tracking(value: str) -> str:
     """Return the public URL without ad-tracking query parameters."""
     url = public_url(value)
     parsed = urlsplit(url)
-    pairs = parse_qsl(parsed.query, keep_blank_values=True)
-    kept = _content_query(parsed.query)
-    if len(kept) == len(pairs):
+    # Drop whole raw "&" segments so kept parameters stay byte-for-byte as issued
+    # (no re-encoding of non-UTF-8 bytes, ';', bare keys or spaces).
+    segments = parsed.query.split("&") if parsed.query else []
+    kept = [s for s in segments if not any(_is_tracking(k, v) for k, v in parse_qsl(s, keep_blank_values=True))]
+    if len(kept) == len(segments):
         return url
-    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(kept), ""))
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "&".join(kept), ""))
 
 
 def same_page_key(value: str) -> tuple:

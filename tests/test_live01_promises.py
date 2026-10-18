@@ -22,7 +22,8 @@ LISTING = ("https://www.lelabofragrances.com/santal-33-147.html?bvstate=pg:2/ct:
            "&gad_source=1&gad_campaignid=123456789&gbraid=0AAAAAD_synthetic_gbraid"
            "&gclid=Cj0KCQjw_synthetic_gclid_value_BwE&utm_source=google&utm_medium=cpc"
            "&source=shoppingads")
-CLEAN = "https://www.lelabofragrances.com/santal-33-147.html?bvstate=pg%3A2%2Fct%3Ar"
+# Kept parameters stay exactly as issued by the merchant (lane E review).
+CLEAN = "https://www.lelabofragrances.com/santal-33-147.html?bvstate=pg:2/ct:r"
 PAGE_TEXT = "SECRET-PAGE-TEXT Free standard shipping on all orders. Returns accepted within 30 days."
 
 
