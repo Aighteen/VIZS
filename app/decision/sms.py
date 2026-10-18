@@ -73,9 +73,9 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
         # The user supplied a URL, but extraction was unavailable, timed out or
         # returned invalid output: do not ask for the URL again (Q2).
         labels[Decision.NEED_MORE_INFORMATION] = "The check could not be completed; no seller conclusion was established. Please try again later."
-    if assessment.decision == Decision.VERIFY_FIRST and BRAND_DIRECT_NOTE in assessment.missing_information:
-        # Policy-written text only (no merchant or source wording, no domains).
-        labels[Decision.VERIFY_FIRST] = assessment.summary
+    if assessment.decision == Decision.CONSIDER_BUYING and BRAND_DIRECT_NOTE in assessment.missing_information:
+        # Brand-direct: policy-written text only (no merchant or source wording, no domains).
+        labels[Decision.CONSIDER_BUYING] = assessment.summary
     prefix = "[SYNTHETIC/MOCK] " if assessment.data_mode == "mock" else "[PARTIAL DATA] " if assessment.data_mode == "partial" else ""
     text = f"{prefix}{assessment.seller_risk.value}: {labels[assessment.decision]} Product authenticity is not established."
     statuses = {report.status for report in assessment.research}

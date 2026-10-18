@@ -106,11 +106,17 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
             missing = ["Authorization does not establish product authenticity."]
         elif not adverse and (direct := brand_direct.assess(plan.product_url.host, records, plan.brand)).confirmed:
             # The brand selling on its own site needs no reseller authorization.
-            # Still VERIFY_FIRST/INSUFFICIENT_EVIDENCE: the support is unverified
-            # search excerpts, and nothing here establishes authenticity.
+            # Human decision (2026-10-17): LOWER_RISK/CONSIDER_BUYING, ranked below
+            # contradictions, adverse findings and official authorization. The
+            # wording stays scoped: seller identity per cited sources, never
+            # product authenticity.
             count = len(direct.sources)
-            sources = "1 independent source names" if count == 1 else f"{count} independent sources name"
-            summary = (f"Brand's own store: {sources} this site as the brand's "
+            refs = sum(brand_direct.is_reference(e.source_url.host) for e in direct.sources)
+            per = (f"{refs} reference source" + ("s" if refs != 1 else "")
+                   + (f" and {count - refs} other independent source" + ("s" if count - refs != 1 else "")
+                      if count > refs else ""))
+            risk, action = Risk.LOWER_RISK, Decision.CONSIDER_BUYING
+            summary = (f"Brand's own store: per {per}, this site is the brand's "
                        "official site (not a lookalike or marketplace), so reseller authorization does not apply. "
                        + ("" if direct.brand_matches else "This holds only if the product is that brand's own. ")
                        + "Check return terms before buying.")

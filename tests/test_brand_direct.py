@@ -43,8 +43,11 @@ def run(listing, sources, brand=None, extra=()):
 
 
 def assert_brand_direct(assessment, sms):
-    assert assessment.decision == "VERIFY_FIRST" and assessment.seller_risk == "INSUFFICIENT_EVIDENCE"
-    assert assessment.summary.startswith("Brand's own store: 2 independent sources")
+    # Human decision 2026-10-17: brand-direct is LOWER_RISK / CONSIDER_BUYING.
+    assert assessment.decision == "CONSIDER_BUYING" and assessment.seller_risk == "LOWER_RISK"
+    assert assessment.summary.startswith("Brand's own store: per 1 reference source")
+    assert "INSUFFICIENT_EVIDENCE" not in sms and sms.startswith("[PARTIAL DATA] LOWER_RISK: Brand's own store")
+    assert "Check return terms before buying." in sms
     assert "verify authorization" not in sms.lower() and "authorization unconfirmed" not in sms.lower()
     assert "Brand's own store" in sms and "Product authenticity is not established." in sms
     assert "Product authenticity is not established." in assessment.missing_information
@@ -71,10 +74,10 @@ def test_brand_store_named_official_by_two_independent_sites_is_brand_direct():
 
 def test_one_curated_reference_source_is_enough_and_counts_once_per_domain():
     assessment, sms = run(BRAND_URL, [GOOD[0]])
-    assert assessment.summary.startswith("Brand's own store: 1 independent source names")
+    assert assessment.summary.startswith("Brand's own store: per 1 reference source, this site")
     assert "verify authorization" not in sms.lower()
     both = [("https://en.wikipedia.org/wiki/Le_Labo", WIKI), ("https://de.wikipedia.org/wiki/Le_Labo", MAG)]
-    assert run(BRAND_URL, both)[0].summary.startswith("Brand's own store: 1 independent source names")
+    assert run(BRAND_URL, both)[0].summary.startswith("Brand's own store: per 1 reference source, this site")
 
 
 def test_user_stated_matching_brand_drops_the_caveat():
@@ -211,6 +214,16 @@ def test_official_authorization_still_gives_lower_risk_first():
                         polarity="supports")
     assessment, _ = run(BRAND_URL, GOOD, extra=[official])
     assert assessment.decision == "CONSIDER_BUYING"
+    assert assessment.summary.startswith("Official seller authorization") and assessment.evidence == [official]
+
+
+@pytest.mark.parametrize("kind", ["regulatory", "investigation"])
+def test_a_single_adverse_finding_blocks_brand_direct_lower_risk(kind):
+    adverse = identity("https://regulator-synthetic.gov/a", "x", finding="substantial_adverse", evidence_type=kind,
+                       claim_status="verified_fact", polarity="supports")
+    assessment, sms = run(BRAND_URL, GOOD, extra=[adverse])
+    assert assessment.seller_risk != "LOWER_RISK" and assessment.decision == "VERIFY_FIRST"
+    assert not assessment.summary.startswith("Brand's own store")
 
 
 # ------------------------------------------------------------------ research layer
@@ -438,7 +451,8 @@ def test_reference_page_infobox_row_confirms_the_exact_domain():
     report = result.report()
     assert report.records_retained == 1 and report.records_received == 1
     assessment, sms = run(BRAND_URL, [], extra=result.evidence)
-    assert assessment.summary.startswith("Brand's own store: 1 independent source names")
+    assert assessment.summary.startswith("Brand's own store: per 1 reference source, this site")
+    assert assessment.seller_risk == "LOWER_RISK" and assessment.decision == "CONSIDER_BUYING"
     assert "verify authorization" not in sms.lower() and f"Unverified source: {WIKI_URL}" in sms
 
 
