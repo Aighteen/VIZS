@@ -61,7 +61,6 @@ def test_INPUT_01_backend_extracts_exact_listing_url_and_price_from_extension_me
         assert amounts == {Decimal(case["price"].lstrip("$"))}
 
 
-@pytest.mark.xfail(strict=True, reason="QA-03: backend URL regex truncates valid listing hrefs containing ' or ending in ) or .")
 @pytest.mark.parametrize("case", [c for c in _cases() if c.get("known_defect")], ids=lambda c: c["id"])
 def test_INPUT_01_backend_extracts_exact_listing_url_with_punctuation(case):
     assert _provided_urls(case["message_text"]) == {case["href"]}

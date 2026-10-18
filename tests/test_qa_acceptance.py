@@ -406,7 +406,6 @@ def test_PROM_08_merchant_self_asserted_authorization_is_statement_only():
     assert not any(r["status"] == "independently_corroborated" for r in assessment["promise_sheet"]["records"])
 
 
-@pytest.mark.xfail(strict=True, reason="QA-01: decide() accepts seller-hosted 'official' authorization as manufacturer corroboration")
 def test_PROM_08_seller_hosted_official_authorization_cannot_yield_lower_risk():
     request, plan = policy_inputs()
     self_asserted = evidence(claim="We are an authorized retailer.", source_url=f"https://{SELLER}/about",
@@ -444,7 +443,6 @@ def test_PROM_09_injection_in_snippets_and_policy_is_data_not_instructions():
     assert_no_accusation(message)
 
 
-@pytest.mark.xfail(strict=True, reason="QA-02: URLs inside merchant quotes are emitted as extra unlabeled links in the phone reply")
 def test_PROM_09_link_inside_merchant_quote_is_not_rendered_as_extra_link():
     content = "Free returns. Questions? Visit http://phish.attacker.com/claim now."
     sheet = PromiseSheet.model_validate({

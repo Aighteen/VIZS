@@ -59,8 +59,12 @@ def test_API_01_auth_precedes_body_parsing_and_oversized_bodies_get_413():
         assert response.status_code == 413
         for path in ["/api/v1/evaluate", "/api/v1/evaluate-message"]:
             assert client.post(path, content=big).status_code == 413
+        # Q1 decision: the extension route requires application/json (415 otherwise).
         assert client.post("/api/v1/extension/evaluate", content=b"{bad",
-                           headers={"Authorization": f"Bearer {TOKEN}"}).status_code == 422
+                           headers={"Authorization": f"Bearer {TOKEN}"}).status_code == 415
+        assert client.post("/api/v1/extension/evaluate", content=b"{bad",
+                           headers={"Authorization": f"Bearer {TOKEN}",
+                                    "Content-Type": "application/json"}).status_code == 422
         assert client.post("/api/v1/extension/evaluate", json={**PAYLOAD, "channel": "extension"},
                            headers={"Authorization": f"Bearer {TOKEN}"}).status_code == 422
     assert harness.calls == [] and harness.dns == []

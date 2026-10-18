@@ -64,7 +64,8 @@ def test_debug_validation_and_mock_assessment():
         assert response.status_code == 200
         assert response.json()["data_mode"] == "mock"
         assert client.post("/api/v1/evaluate", json={}).status_code == 422
-        assert client.post("/api/v1/evaluate", content="{bad").status_code == 422
+        assert client.post("/api/v1/evaluate", content="{bad", headers={"Content-Type": "application/json"}).status_code == 422
+        assert client.post("/api/v1/evaluate", content="{bad").status_code == 415
         assert client.post("/api/v1/evaluate", json={
             "request_id": "test", "message_text": "input", "channel": "sms"}).status_code == 422
         assert client.post("/api/v1/evaluate", content="x" * 17000).status_code == 413

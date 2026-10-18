@@ -18,7 +18,7 @@ Use labeled synthetic fixtures and mocked provider HTTP for automated tests. Nev
 | PROM-04 | Inspected policy omits a topic | Not disclosed in inspected source, never whole-site absence | Automated |
 | PROM-05 | Policy retrieval unavailable or failed | Unavailable, distinct from not_disclosed; do not infer adverse conduct | Automated |
 | PROM-06 | Model quote not a span of returned source | Reject quote/record; no invented evidence | Automated |
-| PROM-07 | Unrelated seller, different region, stale/conflicting terms | Exclude unrelated evidence; qualify conflicts instead of merging conditions | Automated |
+| PROM-07 | Unrelated seller, different region, conflicting terms (stale terms deferred for the hackathon) | Exclude unrelated evidence; qualify conflicts instead of merging conditions. Stale-terms detection is deferred: `retrieved_at` is retrieval time and no staleness model exists | Automated (stale: deferred) |
 | PROM-08 | Merchant self-asserts authorization | Statement only; no manufacturer corroboration/authenticity claim | Automated |
 | PROM-09 | Prompt injection in policy text | Treat as data; no tool/policy override; safe rendering | Automated |
 | PROM-10 | Duplicated snippets / missing quote/time/URL | Deduplicate or reject; preserve honest provenance | Automated |

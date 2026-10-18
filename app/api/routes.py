@@ -33,8 +33,31 @@ def workflow_for(request: Request):
     return workflow
 
 
-@router.post("/api/v1/evaluate")
-async def evaluate(request: Request):
+def require_json(request: Request):
+    # A declared oversized body is refused without reading it (limited_body
+    # still enforces the cap for chunked or undeclared bodies).
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > request.app.state.settings.max_callback_bytes:
+        raise HTTPException(413, "Request too large")
+    media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if media_type != "application/json":
+        raise HTTPException(415, "Content-Type must be application/json")
+
+
+def require_local_caller(request: Request):
+    """Loopback developer routes are not for browsers (Q1).
+
+    Any Origin header means a browser page sent the request, and a non-JSON
+    Content-Type would allow a no-preflight cross-site POST. Both are rejected
+    before the body is read or any provider work starts. The paired extension
+    uses its own route with pairing, Origin and budget checks.
+    """
+    if "origin" in request.headers:
+        raise HTTPException(403, "Browser-origin requests are not accepted on this local route")
+    require_json(request)
+
+
+async def run_evaluation(request: Request):
     workflow = workflow_for(request)
     try:
         value = workflow.contracts.request.model_validate_json(await limited_body(request))
@@ -52,22 +75,34 @@ async def evaluate(request: Request):
         raise HTTPException(502, "Evaluation dependency failed") from None
 
 
-@router.post("/api/v1/evaluate-message")
-async def evaluate_message(request: Request):
-    """Loopback developer bridge; Photon authentication stays in its SDK."""
-    assessment = await evaluate(request)
+@router.post("/api/v1/evaluate")
+async def evaluate(request: Request):
+    require_local_caller(request)
+    return await run_evaluation(request)
+
+
+async def run_message_evaluation(request: Request):
+    assessment = await run_evaluation(request)
     body = request.app.state.format_sms(assessment)
     if assessment.decision == "NEED_MORE_INFORMATION" and assessment.summary not in body:
         body = assessment.summary + " " + body
     return {"assessment": assessment, "message_text": body}
 
 
+@router.post("/api/v1/evaluate-message")
+async def evaluate_message(request: Request):
+    """Loopback developer bridge; Photon authentication stays in its SDK."""
+    require_local_caller(request)
+    return await run_message_evaluation(request)
+
+
 @router.post("/api/v1/extension/evaluate")
 async def extension_evaluate(request: Request):
     access = request.app.state.extension_access
     access.authenticate(request.headers)
+    require_json(request)
     async with access.permit():
-        return await evaluate_message(request)
+        return await run_message_evaluation(request)
 
 
 @router.post("/webhooks/photon")

@@ -207,3 +207,29 @@ test("port already serving refuses before spawning", async () => {
   assert.equal(await run([], h.deps), EXIT.busy);
   assert.equal(h.calls.length, 0);
 });
+
+test("bridge gets a least-privilege env and every credential is redacted (QA-04)", async () => {
+  const token = "synthetic-extension-token-456";
+  const rootKey = "synthetic-root-env-xai-321";
+  const h = harness({
+    env: { ...SECRETS, PATH: "/usr/bin", HOME: "/fake/home", XAI_API_KEY: "synthetic-xai-key-111",
+      TAVILY_API_KEY: "synthetic-tavily-key-222", VIZS_EXTENSION_TOKEN: token, OTHER_SECRET: "synthetic-other-999",
+      GRPC_VERBOSITY: "ERROR" },
+    onBridge: (b) => {
+      b.stdout.write(`DELIVERY_STATUS ok\nDELIVERY_STATUS ${token}\nREPLY_SENT ${rootKey}\n`);
+      setImmediate(() => b.exit(0));
+    },
+  });
+  const rootEnv = path.join("/fake/repo", ".env");
+  const exists = h.deps.exists;
+  h.deps.exists = (p) => p === rootEnv || exists(p);
+  h.deps.readFile = (p) => (p === rootEnv ? `XAI_API_KEY=${rootKey}\n` : "");
+  assert.equal(await run([], h.deps), EXIT.ok);
+  const env = h.calls.find((c) => !c.args.includes("app.workflow.dev_server")).options.env;
+  assert.deepEqual(Object.keys(env).sort(), ["GRPC_VERBOSITY", "HOME", "PATH", "PROJECT_ID", "PROJECT_SECRET",
+    "VIZS_LOCAL_API", "VIZS_REGISTERED_RECIPIENT"]);
+  const text = h.text();
+  for (const value of [token, rootKey, "synthetic-xai-key-111", "synthetic-tavily-key-222"]) assert.ok(!text.includes(value));
+  assert.match(text, /BRIDGE: DELIVERY_STATUS ok/);
+  assert.match(text, /2 non-status bridge line\(s\) suppressed/);
+});
