@@ -3,17 +3,17 @@
 **Project:** Evidence-backed online seller assessments through both Photon messaging and a Chrome extension with an animated on-page shopping pet. Both channels share one FastAPI/Grok/Tavily backend.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent. Humans finalize tracks.
 
-## Status (checkpoint `62f1ac8`, Saturday Oct 17 2026)
+## Status (branch `fix/live01-promises`, Sunday Oct 18 2026)
 
 | Area | State |
 |---|---|
-| Backend workflow | Implemented: Grok extraction, Tavily research, URL safety, deterministic risk policy, research status counts, labeled unverified links |
-| Promise sheet | Implemented: bounded Tavily Extract of up to 3 seller pages, Grok promise extraction, Python quote-span validation, shipping/arrival/returns rows, `.com`/`.net` RDAP registration context; image checks always report unavailable |
-| Extension backend boundary | Implemented: `POST /api/v1/extension/evaluate` with pairing token, origin allowlist and request budget |
-| Chrome extension / pet UI | Implemented in `extension/` (MV3, user-triggered, offline-tested: 52 Node tests, real offline backend smoke, headless Chrome render check). Manual install check and live run pending |
-| Photon iMessage | One registered-phone round trip confirmed by the user (Grok, Tavily 5 returned / 2 retained, VERIFY_FIRST, cited reply). Bounded test bridge, now started and stopped by `npm run shop` (PH-03, offline check passed on macOS). Live re-run pending |
+| Backend workflow | Implemented: Grok extraction, Tavily research, URL safety (ad-tracking params stripped), deterministic risk policy, research status counts, labeled unverified links |
+| Promise sheet | Implemented and working live: Tavily Extract of up to 3 seller pages, Grok promise reader (optional faster `XAI_PROMISE_MODEL`), exact/whole-word/on-topic quote validation, page-wording fallback on reader timeout, privacy-safe "Check details" diagnostics |
+| Brand-direct rule | LOWER_RISK / CONSIDER_BUYING when a reference source (Wikipedia/Wikidata/Britannica) names the exact domain as a brand's official site; lookalikes, marketplaces, retailers and self-claims excluded. See `docs/reviews/BRAND_DIRECT_THREAT_MODEL.md` |
+| Chrome extension / pet UI | Implemented in `extension/` (MV3, user-triggered). Live panel re-check on the new backend pending |
+| Photon iMessage | Live runs on Oct 18: Le Labo link with ad params -> CONSIDER_BUYING reply sent (`npm run shop -- --live`) |
 | SMS, FastAPI Photon webhook, hosting | Not verified; `/webhooks/photon` is deliberately disabled |
-| Tests | 642 Python, 79 extension and 38 Spectrum (bridge + launcher) tests pass, 0 xfail (macOS, Oct 17). QA verdict: ready with caveats (manual browser and live checks open); see `docs/QA_REPORT.md` |
+| Tests | 925 Python, 79 extension and 38 Spectrum tests pass (macOS, Oct 18). See `docs/TECH_LEAD_HANDOFF.md` (LIVE-01 re-run) |
 
 **Immediate next steps:** save the mandatory Devpost draft (10:30 PM PDT tonight), load and manually check the extension (see `extension/README.md`), then one authorized live run per channel. See [next steps](docs/NEXT_STEPS.md).
 
