@@ -1,5 +1,7 @@
 # Registered-phone inbound test
 
+> Historical record of an earlier run; test counts, paths and statuses below are not current. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 Packet A added app/adapters/spectrum/src/bridge-handler.mjs, test-bridge.mjs and bridge-handler.test.mjs, plus the A-owned /api/v1/evaluate-message route and tests/test_api.py check. Existing echo src/index.ts was preserved. The route uses the actual runtime assessment and D formatter, adding the assessment clarification when necessary.
 
 Acceptance run: existing project venv python -m pytest -q => 104 passed, one dependency warning. node --test app/adapters/spectrum/src/bridge-handler.test.mjs => 3 passed. npm.cmd run typecheck => exit 0; node --check src/test-bridge.mjs => exit 0; git diff --check => exit 0. npm.cmd ci --ignore-scripts --no-audit --no-fund installed A-local dependencies; package manifests unchanged.

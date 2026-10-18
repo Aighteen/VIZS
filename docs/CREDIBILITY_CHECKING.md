@@ -4,7 +4,7 @@
 
 The user supplied the Kept project brief as the desired credibility-checking reference. Adopt its promise-first approach within VIZS: explain what the merchant promises, what retrieved evidence supports or contradicts it, and what to expect. Both Photon messaging and the animated-pet Chrome extension remain core channels sharing one backend. The reference's "browser extension out" cut-list does not override that explicit user decision.
 
-This document specifies upcoming work. Current code still performs seller research and conservative risk policy with labeled unverified links; it does not yet extract structured promises, retrieve domain registration records, match images, detect AI images or produce a promise sheet. No product rename, Next.js rewrite, new deployment or full Kept platform implementation is implied.
+Status at `62f1ac8`: implemented are the promise contracts and fixtures, one bounded Tavily Extract call over up to 3 same-seller pages, Grok promise extraction, Python exact-span validation, the attached promise sheet in both formatters, and Verisign RDAP registration context for `.com`/`.net` only. Not implemented: image matching and AI-photo detection (both report unavailable). Promise extraction and RDAP have only been tested with mocks, not live. No product rename, Next.js rewrite, new deployment or full Kept platform implementation is implied.
 
 ## User-visible result
 
@@ -54,7 +54,7 @@ Both channels use the same structured assessment/policy. The pet extension does 
 4. D/A: app/decision/, app/workflow/, app/api/ and owned tests format useful promise-first results while preserving uncertainty, old client compatibility and Photon source links.
 5. C: add domain registration lookup as context using verified provider documentation and explicit call limits; missing/unsupported data remains unknown. Do not treat a registration date as store age or domain age as fraud.
 6. Image matching: later bounded provider integration or clearly labeled fixture, with image/page URLs and provenance. Perceptual similarity is evidence of similarity, not common origin. AI-photo detection remains deferred until actual model access and evaluation justify its output.
-7. Frontend owner (still unassigned): extension/ renders promise rows and honest pet states against fixtures, then the shared backend. A maintains the reproducible Photon test path. No additional agents launched by this specification.
+7. Frontend owner (not yet confirmed; no extension code merged): extension/ renders promise rows and honest pet states against fixtures, then the shared backend. A maintains the reproducible Photon test path. No additional agents launched by this specification.
 
 First acceptance target: a synthetic store's "free returns" claim and policy showing customer-paid returns produce a cited, conditional conflict explanation in both channel formats, without a scam label or invented cost. An absent policy and provider failure must produce different states. Add tests for injection, unrelated sellers/regions, stale/contradictory terms, missing quotes, model-invented spans and duplicated snippets. No live paid calls are needed to build these fixture tests.
 
@@ -66,4 +66,4 @@ The supplied FTC/Visa statistics, competitor comparisons, model capabilities/lic
 
 ## Current status and handoff
 
-Documentation-only specification added in the A integration checkout. Current implemented proof remains the f5af5ba backend and user-confirmed iMessage cited response (five Tavily records, two retained, three filtered). Last code checks were 116 Python/four bridge tests; no new code test, paid request, message, deployment, commit or push is claimed for this specification. First next task is D's bounded promise contract and labeled fixtures, coordinated with C/B/A; preserve existing APIs and both channels.
+Steps 1-5 are merged on `main` (`62f1ac8`); the first acceptance target (free-returns vs customer-paid conflict in both formats) is covered by `tests/test_api.py::test_end_to_end_promise_conflict_shared_by_extension_and_phone` and the policy/SMS promise tests. 159 Python tests passed on Oct 17. Live proof is still only the earlier user-confirmed iMessage cited response (five Tavily records, two retained, three filtered), which predates the promise sheet. Remaining: step 6 (deferred), step 7 (extension UI), and one authorized live run of promise extraction.

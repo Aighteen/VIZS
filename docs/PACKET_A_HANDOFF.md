@@ -1,5 +1,7 @@
 # Packet A completion report
 
+> Historical record of an earlier run; test counts, paths and statuses below are not current. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 ## Photon Spectrum continuation
 
 Connection test update: user reported "It connected". Running process logs

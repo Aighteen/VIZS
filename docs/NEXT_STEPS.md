@@ -1,40 +1,40 @@
-# Current checkpoint and next assignment
+# Current checkpoint and next work
 
-User approved two core channels: Photon messaging and a Chrome extension with an animated on-page pet. Read EXTENSION_SCOPE.md and PROJECT_BRIEF.md; earlier SMS-first packet planning is historical. Scope files are updated locally only. Runtime/backend/bridge checkpoint f5af5ba is on GitHub main and feat/packet-a-integration. Original main checkout still has preserved uncommitted work; do not reset/clean or switch another session's branch.
+Checkpoint: `main` at `62f1ac8` ("Merge validated packet A integration"), Saturday Oct 17 2026, about 8:50 PM PDT. Both Photon messaging and the Chrome pet extension are core channels sharing one backend (see EXTENSION_SCOPE.md). Do not reset/clean or switch another session's branch.
 
-## Completed foundation
+## Deadlines first
 
-- FastAPI application wiring and .env loading, offline default, explicit live mode, managed HTTP lifecycle.
-- Grok extraction, Tavily source records, URL/relevance checks, deterministic seller policy and message formatting.
-- Research statuses/counts, retained unverified snippets and labeled source links.
-- Last code verification: 116 Python tests and four bridge tests passed; TypeScript/syntax checks passed.
-- Real registered-phone iMessage test: five Tavily records, two retained, three filtered, VERIFY_FIRST/partial; user confirmed receipt with source links.
+- **Tonight 10:30 PM PDT: mandatory Devpost initial draft.** Humans only: roster, tracks, repo URL, save and confirm. Target 10:00 PM. See SUBMISSION_CHECKLIST.md.
+- **Sunday 10:00 AM PDT: final** with playable video and public source. Feature freeze 7:30 AM; target submit 9:15 AM.
 
-## Next credibility task: promise contracts and fixtures
+## Done (verified in this repository)
 
-The user supplied a Kept brief for credibility checking. Follow CREDIBILITY_CHECKING.md: D defines bounded promise/source-span records and synthetic supported/conflicting/unknown/unavailable fixtures; coordinate C's content retrieval, B's structured extraction and A's integration. First prove a quoted free-returns versus customer-paid-return condition in fixtures without inventing a cost or accusing a seller. Existing Photon and proposed pet extension must consume the same result. Do not adopt the reference's extension exclusion, payments stack, custom training or dispute table. No full-stack rewrite or live calls are needed for this first task.
+- FastAPI app, `.env` loading, offline default, explicit live mode, managed HTTP lifecycle, `dev_server` loopback launcher with `--pair`/`--live`.
+- Grok extraction, Tavily research, URL/relevance checks, research status counts, labeled unverified links, deterministic risk policy, SMS/message formatter.
+- Promise sheet (G1/G2 in ACCEPTANCE_TESTS.md): D contracts and synthetic fixtures; one bounded Tavily Extract call over up to 3 same-seller pages; Grok promise extraction; Python exact-span validation; supported/conflicting/not_disclosed/unavailable rows; Verisign RDAP registration context for `.com`/`.net` only; image context always unavailable. Both formatters consume the same sheet.
+- Extension backend boundary: `POST /api/v1/extension/evaluate` with bearer pairing token, exact origin allowlist, 6 requests/minute and 1 in flight by default. Rejections happen before provider work.
+- Tests: 159 Python tests passed on macOS (Python 3.14, fresh venv) on Oct 17. Node bridge suite last recorded 4 passed on Windows; not re-run since (no Node on the macOS machine).
+- Live proof: one registered-phone iMessage round trip (Grok, Tavily 5 returned / 2 retained / 3 filtered, VERIFY_FIRST / partial), handset receipt confirmed by the user. This predates the promise sheet; promise extraction and RDAP have not been exercised live.
 
-## Next implementation (pending)
+## Not done
 
-1. Assign one frontend session to extension/ (including its tests/assets); no new agents are launched by a scope update. A retains backend integration/security and B/C/D retain their modules.
-2. Build minimal Chrome extension activation, on-page pet, click-to-check action and result panel against labeled offline fixtures. Include searching/completed/error states, keyboard access, dismissal/movement and reduced motion.
-3. A defines the extension-facing API/access controls, provider-cost bounds and any required origin settings. Current /api/v1/evaluate is a local developer endpoint permitting channel=debug; do not invent an extension channel or ship a reusable backend secret in the client. Keep xAI/Tavily keys server-side. No deployment or browser-store publication has been authorized.
-4. Connect current-tab URL and optional confirmed price. Avoid whole-page scraping and background research. Prevent duplicate click calls and stale results after navigation.
-5. In A's scope, add a reproducible bounded Photon launch/stop flow and verify registered-phone request/reply behavior remains intact; keep phone/channel credentials out of Git. SMS and always-on hosting remain separate verification gates.
-6. Test insufficient evidence, unverified links, research failure/timeout, offline labels, safe rendering and accessibility. Then run one explicitly authorized live listing assessment through the extension and document actual results.
+1. **Chrome extension / pet UI.** No `extension/` directory exists on `main` or any pushed branch. TECH_LEAD_PLAN.md assigned it to a local worktree (`feat/pet-extension`); if that work exists it has not been pushed or merged. Confirm with the team before starting fresh.
+2. **Reproducible Photon launch/stop.** `npm start` still runs the echo agent; the shopping path is `test-bridge.mjs` started by hand with environment variables. No committed launcher (ACCEPTANCE PH-03).
+3. **Live checks of new features.** One authorized live run through the extension (LIVE-01) and one through Photon with the promise sheet (PH-04 re-run). Requires explicit credit/message authorization.
+4. **SMS, FastAPI Photon webhook, public hosting, always-on listener.** Unverified; keep out of claims unless done.
+5. **Docs/video for submission.** Demo cases (credible evidence vs insufficient evidence), honest real-vs-fixture labeling, team contributions.
+
+## Next implementation, in order
+
+1. Assign the frontend owner and writable path `extension/` (with its assets/tests). Build a Manifest V3 extension against offline fixtures: user activation only (`activeTab`), movable/dismissible pet, Check seller with editable optional price, idle/searching/finished/error states, result panel with risk, decision, summary, missing information, promise rows and up to two labeled links. Text-only rendering, keyboard access, reduced motion, no duplicate in-flight request, stale results cleared on navigation. Pairing token stored in extension storage; provider keys never in the client.
+2. Wire the extension to `http://127.0.0.1:8000/api/v1/extension/evaluate` with `channel: "debug"` and the price in `message_text`. Add the unpacked extension ID to `VIZS_EXTENSION_ORIGINS` (otherwise requests carrying an `Origin` header get 403).
+3. A: commit a launch/stop script for the API plus `test-bridge.mjs` (single listener, credentials from ignored env files), or make `test-bridge.mjs` the `npm` script; re-verify a registered-phone reply.
+4. Run the automated EXT cases, then one authorized live extension run; record actual results in ACCEPTANCE_TESTS.md.
 
 ## Pet and evidence limits
 
-Existing backend returns one final result, no progress phases. Search animation may run during the request; Reviewing sources requires an actual backend signal. A happy/finished pet is not proof of a safe seller. Preserve deterministic risk, authenticity uncertainty, explicit failures and source provenance. Stronger official seller/brand/region verification is still pending; snippets are never automatic proof.
+The backend returns one final result with no progress phases. Show Searching for the whole request; do not simulate "Reviewing sources" or percentages. A happy pet is not proof of a safe seller. Preserve deterministic risk, authenticity uncertainty, explicit failures and source provenance. Snippets are never automatic proof.
 
-## Photon status and deferred work
+## Deferred
 
-Photon remains a core channel; the bounded listener is stopped. Existing Spectrum iMessage proof does not establish SMS, FastAPI webhook security, public hosting or an always-on service. Pricing/card rewards, DETAILS/history, pet cosmetics, other browsers/categories and advanced infrastructure are deferred until both core channels meet P0. Human track/submission ownership and deadlines remain unchanged.
-
-## Existing backend verification command
-
-```powershell
-& C:\Github\VIZS\.venv\Scripts\python.exe -m pytest -q
-```
-
-No extension tests exist yet. This scope-only update does not change implementation or constitute a new passing test run.
+Pricing/card rewards, DETAILS/history, pet cosmetics, other browsers/categories, image matching, AI-photo detection and advanced infrastructure wait until both channels meet P0.

@@ -19,6 +19,10 @@ Read AGENTS.md, required project context, CREDIBILITY_CHECKING.md, EXTENSION_SCO
 
 Promise agent establishes and commits bounded Pydantic contracts/fixtures first; root reviews/distributes the gate before research relies on it. Preserve old models/clients and seller risk rules. Extension consumes documented assessment JSON and uses fixtures until live integration. Root wires research/extraction/policy, implements paired-token extension API and bounded access, and reproducible Photon launch/stop; then merges named local branches in dependency order. Tests and handoff document actual vs mocked behavior. No new frontend frameworks required: code-native mascot and standard extension files preferred. No fake progress, paid call retries, unverified authenticity confidence or page-wide scraping.
 
+## Status at `62f1ac8` (Oct 17)
+
+Merged to `main`: promise contracts/fixtures, research/extraction (Tavily Extract, Grok promise rows, RDAP), root A wiring, paired-token extension API with bounded access. 159 Python tests pass. Not merged or pushed: the pet extension (`feat/pet-extension` is not on the remote) and a reproducible Photon launcher. Remote branches are `main`, `feat/packet-a-integration` (older, at `f5af5ba`) and two Copilot planning branches. Windows worktree paths above refer to the original machine.
+
 ## Definition of complete for this build
 
 Locally installable Chrome pet extension, functional protected local backend with quote-validated promise sheet, both channel formatters, reproducible bounded Photon launcher, meaningful automated regression and future-reference acceptance matrix. Domain registration is context only; unsupported image matching/AI-photo detection must explicitly remain unavailable. Public hosting/store installation/live new channel tests require external verification and are reported honestly, not fabricated. Payments/training/dispute platform remains excluded.

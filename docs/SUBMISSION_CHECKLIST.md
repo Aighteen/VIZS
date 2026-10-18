@@ -15,7 +15,7 @@
 - [ ] Working core functionality represented accurately — clearly distinguish **real API** behavior from fixtures.
 - [ ] Title, problem, one-line value proposition, how it works, technology, evidence policy, limitations, and team contributions.
 - [ ] **Video is uploaded and actually playable** in the submission.
-- [ ] Recorded real SMS on Photon if claiming Photon side-track eligibility; verify corresponding beta API/provider channel proof.
+- [ ] Recorded real Photon message if claiming Photon side-track eligibility. Proven channel so far is **iMessage via Spectrum SDK**, not SMS; describe it as iMessage unless SMS is separately verified.
 - [ ] Seller claim demo includes real citations; no fabricated authenticity score or proof.
 - [ ] Document sample input and two useful cases: credible evidence and insufficient evidence; explain any missing integrations.
 - [ ] Sponsor requirements/extra forms genuinely completed if selecting them; no claims based solely on a plan or fixture.
@@ -25,9 +25,9 @@
 ## 90-second video script
 
 - 0–12 s: counterfeit uncertainty, seller trust and expensive fragrance purchases.
-- 12–32 s: real SMS user input with listing URL, show delivery.
+- 12–32 s: real Photon iMessage input with listing URL (or the extension pet's Check seller, once built), show delivery.
 - 32–58 s: brief Grok task plan + evidence sources + explicit risk policy.
-- 58–80 s: show reply by Photon; distinguish `INSUFFICIENT_EVIDENCE` from fraud claims.
+- 58–80 s: show the reply and/or pet result panel, including a promise row with its quote; distinguish `INSUFFICIENT_EVIDENCE` from fraud claims.
 - 80–90 s: impact, exact sponsor API usage, limits, next steps (price/card if not built).
 
 **No fabricated provider usage, test results, citations, number of users, or seller accusations.**

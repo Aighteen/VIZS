@@ -1,10 +1,10 @@
 # Current scope: Photon messaging and a browser extension with an animated pet
 
-Approved direction: the user wants both Photon messaging and a Chrome extension with an animated on-page pet that shows when research is running. Both channels are core scope and share the existing assessment backend. This is a scope/design update only; extension implementation has not started. Adding the extension does not replace or downgrade Photon.
+Approved direction: the user wants both Photon messaging and a Chrome extension with an animated on-page pet that shows when research is running. Both channels are core scope and share the existing assessment backend. Status at `62f1ac8`: the backend extension route, pairing and request budget are implemented and tested; the extension UI itself is not in the repository. Adding the extension does not replace or downgrade Photon.
 
 ## Product and first release
 
-A fragrance shopper opens a listing, activates the extension, and clicks the pet's "Check seller" action. The extension submits the current page URL and an optional user-confirmed price. The backend currently returns seller risk, buying advice, relevant source links and missing information. The new credibility specification in CREDIBILITY_CHECKING.md adds planned promise/evidence rows for shipping, arrival and returns, with domain/image context; those fields are not implemented yet. Clicking the pet opens a compact on-page result panel. Fragrances remain the supported product category.
+A fragrance shopper opens a listing, activates the extension, and clicks the pet's "Check seller" action. The extension submits the current page URL and an optional user-confirmed price. The backend returns seller risk, buying advice, relevant source links, missing information and an optional `promise_sheet` with quote-validated shipping, arrival and returns rows plus domain/image context (image is always unavailable). See CREDIBILITY_CHECKING.md and API_CONTRACTS.md. Clicking the pet opens a compact on-page result panel. Fragrances remain the supported product category.
 
 The pet is the extension's own mascot. There is no required Codex API, ChatGPT Work Pets integration, or account connection. Its appearance is still to be chosen; a code-native simple mascot can be used first. Pet behavior communicates request progress, never seller trust before the assessment completes.
 
@@ -24,22 +24,22 @@ A registered user sends a fragrance listing URL and optional price through Photo
 
 P0 includes a reproducible Photon launch/stop flow and verified inbound/reply behavior alongside the extension UI. Existing proof is iMessage; do not call it SMS. Public hosting, a persistent listener and a verified FastAPI callback remain unfinished. Shared assessment logic is required; cross-channel account linking, history synchronization and automatic forwarding between channels are not required.
 
-## P0 acceptance criteria for both channels (extension work pending)
+## P0 acceptance criteria for both channels (extension UI pending)
 
 - Chrome extension loads locally; user activation shows a small movable/dismissible pet on the current shopping page. No automatic research on navigation.
 - Check seller captures the active listing URL; optional price is editable/confirmed. Do not scrape the entire page, payment forms or account details.
 - One user action starts one bounded backend evaluation. Repeated clicks do not silently create duplicate paid calls. Navigation/dismissal clears stale results; cancellation does not promise reversal of already incurred provider work.
 - Searching animation runs until the request settles. Keyboard access and reduced-motion/static pet behavior work. Position/visibility preferences may be local; no purchase/browsing history storage is required.
 - Result panel shows risk, decision, summary, missing information, provider failure states and up to two relevant source links. Unverified sources remain labeled. Distinguish completed insufficient evidence from a failed request.
-- Provider keys stay on the server. Backend access control, rate/cost limits and any required extension-origin configuration must be designed/tested before public exposure; the current local developer API is not production-ready.
+- Provider keys stay on the server. Implemented locally: `POST /api/v1/extension/evaluate` requires `Authorization: Bearer <VIZS_EXTENSION_TOKEN>`, rejects `Origin` values not in `VIZS_EXTENSION_ORIGINS`, and limits to 6 requests/minute and 1 in flight by default, all before provider work. This is local pairing, not public authentication; the API is not production-ready.
 - Extension permissions are limited to the user-triggered page/task. Merchant/page content is untrusted and cannot change system instructions, tools or risk policy. Link opening/rendering must not execute retrieved markup or instructions.
 - Verify offline fixture cases first, then one explicitly authorized live extension run. An offline fixture or animated demo is not evidence of live Grok/Tavily usage.
 
 ## Reused backend and current proof
 
-Python/FastAPI, shared Pydantic contracts, Grok extraction, Tavily, source/URL validation, deterministic risk rules, research status counts and evidence labels are implemented. Existing POST /api/v1/evaluate is the reference boundary; it currently permits channel=debug only. Do not invent channel=extension without a D-owned contract change. A owns the client-facing boundary/access configuration; D owns schema changes. Optional supplied price is currently extracted from message_text, not a new request field.
+Python/FastAPI, shared Pydantic contracts, Grok extraction, Tavily, source/URL validation, deterministic risk rules, research status counts, evidence labels, the promise sheet and the extension route are implemented. The extension calls POST /api/v1/extension/evaluate, which returns `{assessment, message_text}`; the body still uses channel=debug because there is no extension channel in the contracts. Do not invent channel=extension without a D-owned contract change. A owns the client-facing boundary/access configuration; D owns schema changes. Optional supplied price is extracted from message_text, not a separate request field.
 
-Last implementation checks: 116 Python and four bridge tests passed. A real registered-phone iMessage test produced five Tavily records, two retained, three filtered, VERIFY_FIRST/partial; user confirmed receipt with unverified links. That proves the existing phone path, not the proposed extension.
+Last checks: 159 Python tests passed on Oct 17 (macOS, fresh venv); Node bridge suite last recorded 4 passed. A real registered-phone iMessage test produced five Tavily records, two retained, three filtered, VERIFY_FIRST/partial; user confirmed receipt with unverified links. That proves the phone path before the promise sheet was added, not the extension.
 
 Photon messaging is a core product channel alongside the extension. Existing Spectrum iMessage bridge is bounded/local and stopped. SMS transport, the FastAPI Photon callback, persistent service and public deployment remain unverified. Keep historical proof accurate if humans consider the Photon track.
 
@@ -49,9 +49,9 @@ After P0 only: exact-match pricing, card rewards using non-sensitive labels, DET
 
 ## Ownership and next implementation tasks
 
-Proposed frontend area: extension/ including its assets and tests. New frontend owner is unassigned; this update does not launch another agent. A owns Photon integration, backend access configuration and coordination; B/C/D retain their modules. Document an explicit frontend session assignment before coding and use a separate checkout for concurrent editing.
+Frontend area: extension/ including its assets and tests. TECH_LEAD_PLAN.md assigned it to a local `feat/pet-extension` worktree, but nothing has been pushed or merged; confirm the owner before coding. A owns Photon integration, backend access configuration and coordination; B/C/D retain their modules. Document an explicit frontend session assignment before coding and use a separate checkout for concurrent editing.
 
-Next: assign the frontend owner and implement a minimal Chrome extension/pet shell plus offline result-panel fixtures. In parallel work only when explicitly requested: A defines a safe extension API boundary and a reproducible Photon launch/stop flow. Acceptance tests should cover request/state transitions, error/insufficient-evidence distinction, duplicate-click handling, safe rendering, keyboard/reduced motion, and backend access enforcement. Then test one real listing against the shared backend and record actual results.
+Next: confirm the frontend owner and implement a minimal Chrome extension/pet shell plus offline result-panel fixtures against the existing extension route. In parallel only when explicitly requested: A adds a reproducible Photon launch/stop flow. Acceptance tests should cover request/state transitions, error/insufficient-evidence distinction, duplicate-click handling, safe rendering, keyboard/reduced motion, and backend access enforcement. Then test one real listing against the shared backend and record actual results.
 
 ## Credibility reference update
 

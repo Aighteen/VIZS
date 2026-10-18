@@ -1,5 +1,7 @@
 # Runtime wiring handoff
 
+> Historical record of an earlier run; test counts, paths and statuses below are not current. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 ## Assignment and outcome
 
 Packet A runtime wiring, in C:\Github\VIZS-packet-a on feat/packet-a-integration, starting at ecee580. User supplied configuration locally; values were never displayed or copied. Preserve unrelated untracked .vscode/. Changes remain local, uncommitted and unpushed.

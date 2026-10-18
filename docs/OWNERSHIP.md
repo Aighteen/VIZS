@@ -1,8 +1,8 @@
 # Development ownership
 
-Status: Packets B, C, and D merged into the Packet A integration branch by explicit human instruction; combined offline suite passes 116 tests. Default application wiring is implemented locally; a one-off live Snowboard keyword probe passed Grok/Tavily and completed a Spectrum iMessage send request; a fragrance-URL cited reply was received by the user; the latest source-retention/status changes passed both offline tests and one live registered-phone iMessage run. Packet A was assigned to this Codex session by the human. Packets B-D assigned by the human to dedicated Codex agents; human identities remain unspecified. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
+Status (Oct 17, `main` at `62f1ac8`): packets A-D, the promise sheet and the extension backend route are merged on `main`; 159 Python tests pass. The extension UI is not in the repository. History: packets B, C, and D were merged into the Packet A integration branch by explicit human instruction. Default application wiring is implemented locally; a one-off live Snowboard keyword probe passed Grok/Tavily and completed a Spectrum iMessage send request; a fragrance-URL cited reply was received by the user; the latest source-retention/status changes passed both offline tests and one live registered-phone iMessage run. Packet A was assigned to this Codex session by the human. Packets B-D assigned by the human to dedicated Codex agents; human identities remain unspecified. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
 
-Current product direction: both Photon messaging and a Chrome extension with animated on-page pet are core channels sharing one backend; see EXTENSION_SCOPE.md. Extension implementation has not started. A retains Photon integration ownership.
+Current product direction: both Photon messaging and a Chrome extension with animated on-page pet are core channels sharing one backend; see EXTENSION_SCOPE.md. The extension backend route exists; no extension UI code has been pushed or merged. A retains Photon integration ownership.
 
 ## Assignment register
 
@@ -10,12 +10,12 @@ The human coordinator assigns each session; A maintains this register afterward.
 
 | Packet | Human / AI tool and session | Branch | Checkout/worktree | Status |
 |---|---|---|---|---|
-| A: integration, Photon, submission coordination | Human name TBD / current Codex session | `feat/packet-a-integration` | `C:\Github\VIZS-packet-a` | Integration coordinator; B-D merged, 116 tests pass |
+| A: integration, Photon, submission coordination | Human name TBD / current Codex session | `feat/packet-a-integration` | `C:\Github\VIZS-packet-a` | Integration coordinator; merged to `main` at `62f1ac8`, 159 tests pass |
 | B: Grok extraction | Codex Packet B agent | `feat/packet-b-grok` | `C:\Github\VIZS-packet-b` | Implementation merged into A |
 | C: research and evidence | Codex Packet C agent | `feat/packet-c-research` | `C:\Github\VIZS-packet-c` | Implementation merged into A |
 | D: contracts, policy, QA | Codex Packet D agent | `feat/packet-d-policy-qa` | `C:\Github\VIZS-packet-d` | Contracts, policy and QA merged into A |
 
-- Extension frontend owner/session: unassigned; proposed exclusive area `extension/` including assets and tests. Assign explicitly before implementation; A owns its backend boundary. No agent launched by this scope change.
+- Extension frontend owner/session: TECH_LEAD_PLAN.md assigned a `feat/pet-extension` worktree, but no such branch is on the remote and nothing is merged. Confirm the owner; exclusive area `extension/` including assets and tests. Assign explicitly before implementation; A owns its backend boundary. No agent launched by this scope change.
 - Integration owner: current Packet A Codex session; merges require explicit instruction.
 - Human Devpost submitter and backup: TBD.
 - Inspected repository base commit: `ffc3e85`; shared scaffold `7d6f11a`, D contracts `f1ba046` now merged into A.

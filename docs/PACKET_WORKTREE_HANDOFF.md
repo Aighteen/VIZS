@@ -1,5 +1,7 @@
 # Packet worktree handoff
 
+> Historical record of an earlier run; test counts, paths and statuses below are not current. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 ## Assignment and outcome
 
 Human authorized isolated A-D worktrees and dedicated B-D agents using the supplied packet prompts. Root served as A/integration coordinator. All worktrees started from local scaffold snapshot 7d6f11a. Original C:\Github\VIZS on main was preserved, including tracked and untracked changes; secrets and .vscode settings were not copied. No branches merged, pushes, deployments, submissions, or paid API calls.

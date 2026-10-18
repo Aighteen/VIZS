@@ -1,5 +1,7 @@
 # Research output follow-up handoff
 
+> Historical record of an earlier run; test counts, paths and statuses below are not current. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 ## Assignment and outcome
 
 Human asked root to continue C/D research-response improvements after receiving INSUFFICIENT_EVIDENCE. Work stayed in C:\Github\VIZS-packet-a on feat/packet-a-integration, based on ecee580 plus preserved local runtime/bridge changes. Scope recorded in OWNERSHIP.md. Other packet checkouts, local secrets and .vscode were preserved. No agents spawned, no paid calls, no messages sent, no commit/push/deployment.

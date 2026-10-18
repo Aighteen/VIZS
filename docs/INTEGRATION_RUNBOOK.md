@@ -1,15 +1,17 @@
-# Integration runbook â€” verify in this order
+# Integration runbook - verify in this order
 
 This is an action plan, not a record of successful API access. Update PASS/BLOCKED only after observing real results.
 
 | Probe | How to check | Pass evidence | Status |
 |---|---|---|---|
-| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and injected evaluation pass; default offline evaluation returns a partial assessment/clarification | OFFLINE PASS (116 tests); local API and registered-phone iMessage cited reply observed |
-| Grok API | Use approved model and vendor SDK/Responses client; test small structured response | Valid parsed `OrchestratorPlan` | UNTESTED |
-| Research provider | Tavily API key/search request, or xAI supported native web search | Real source record URLs logged without sensitive info | UNTESTED |
-| Photon 2.0 Beta | Confirm beta account access, channel/phone provision, precise callback auth/send docs | Visible inbound message and accepted outbound SMS | UNTESTED |
+| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and injected evaluation pass; default offline evaluation returns a partial assessment/clarification | OFFLINE PASS (159 tests, Oct 17, macOS); local API and registered-phone iMessage cited reply observed |
+| Grok API | Use approved model and vendor SDK/Responses client; test small structured response | Valid parsed `OrchestratorPlan` | LIVE PASS (registered-phone run); promise extraction mocked only |
+| Research provider | Tavily API key/search request, or xAI supported native web search | Real source record URLs logged without sensitive info | LIVE PASS for Tavily Search (5 returned / 2 retained); Tavily Extract and RDAP mocked only |
+| Photon 2.0 Beta | Confirm beta account access, channel/phone provision, precise callback auth/send docs | Visible inbound message and accepted outbound SMS | iMessage via Spectrum SDK: PASS (user-confirmed reply). SMS and FastAPI callback: UNTESTED |
+| Extension route | `dev_server --pair`, then POST `/api/v1/extension/evaluate` with the token | 401/403/429 before provider work; assessment returned with token | OFFLINE PASS (tests/test_api.py); no extension client exists yet |
+| Photon launcher | Committed launch/stop for API plus bridge | One listener, clean stop | NOT BUILT |
 | Deployment | Public HTTPS webhook URL reachable, env vars configured securely | Real callback reached remote service | UNTESTED |
-| End-to-end | Send test SMS, inspect trace ID, receive reply | Real inbound/outbound proof and no duplicate SMS | UNTESTED |
+| End-to-end | Send test SMS, inspect trace ID, receive reply | Real inbound/outbound proof and no duplicate SMS | iMessage bounded test PASS; extension end to end UNTESTED |
 
 ## Photon warnings
 

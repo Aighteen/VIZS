@@ -1,5 +1,7 @@
 # Live keyword probe: Snowboard
 
+> Historical record of an earlier run; test counts, paths and statuses below are not current. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 ## Authorized scope and observed results
 
 The user authorized a small live Grok/Tavily keyword search and sending its result via Photon to the registered phone. This is a one-off general-keyword integration probe; the fragrance product-URL assessment endpoint was not used or generalized. No seller credibility or authenticity conclusion was generated.

@@ -3,6 +3,8 @@
 Current scope update: both Photon messaging and the Chrome extension with an animated on-page pet are core channels. Read EXTENSION_SCOPE.md and NEXT_STEPS.md for the current critical path. The timeline below is the original SMS-first plan, not a fresh schedule or proof of completion. Event deadlines, coding-window constraints and upload buffers remain unchanged. Limit the new UI to the minimal pet/result flow; do not let optional pet cosmetics or unrelated work consume the submission buffer.
 
 
+**Status at 8:50 PM Saturday:** backend, promise sheet and extension route merged; extension UI and Photon launcher not built. The 9:30 PM freeze-concept and 10:00 PM draft targets below are next. Overnight: extension against fixtures, launcher, then authorized live runs before the 7:30 AM freeze.
+
 **Time source:** organizers' Hacker Guide. Adjust remaining work to actual current time; never miss submission to finish a feature.
 
 ## Absolute deadlines

@@ -63,3 +63,18 @@ G1: shared promise contracts and labeled supported/conflict/missing/unavailable 
 ## Execution log
 
 This file begins as a test plan. Append actual commit, command, output and IDs covered after integration. Manual/live cases remain pending unless explicitly recorded with evidence; historical iMessage receipt does not verify new promise features or the extension.
+
+### 2026-10-17, `main` at `62f1ac8` (docs refresh)
+
+- Command: `python -m pytest -q -p no:cacheprovider` in a fresh macOS Python 3.14 venv with the `pyproject.toml` dependencies => **159 passed**, one Starlette/httpx deprecation warning.
+- Node bridge suite not run (Node not installed on that machine); last recorded result 4 passed on Windows.
+- Gates: G1 and G2 have automated coverage. G3 is partial: extension access controls are tested, but no extension client or Photon launcher exists. G4 and G5 are not started for the new features.
+- Automated cases with named tests (others not mapped in this pass):
+  - PROM-01: `tests/test_policy.py::test_promise_conflict_preserves_risk_and_both_quotes`, `tests/test_sms.py::test_promise_conflict_phone_output_retains_both_quotes_and_links`
+  - PROM-04/05: `tests/test_policy.py::test_promise_missing_and_unavailable_are_distinct`, `tests/test_grok.py::test_promise_extraction_missing_client_or_sources_unavailable_not_absent`
+  - PROM-06: `tests/test_grok.py::test_promise_extractor_keeps_provider_registry_and_rejects_invented_spans`, `tests/test_policy.py::test_promise_rejects_unproven_spans_and_context`
+  - DOM-01/02: `tests/test_research.py::test_rdap_fixed_origin_date_context_and_unsupported_suffix`
+  - API-01: `tests/test_api.py::test_extension_pairing_and_origin_before_paid_calls`, `test_extension_unconfigured_and_rate_budget`
+  - API-02: `tests/test_api.py::test_extension_concurrent_budget_releases_after_error`, `test_extension_unconfigured_and_rate_budget`
+  - OUT-03: `tests/test_api.py::test_end_to_end_promise_conflict_shared_by_extension_and_phone`
+- Pending: all EXT-*, PH-03, LIVE-01, and a PH-04 re-run with the promise sheet.
