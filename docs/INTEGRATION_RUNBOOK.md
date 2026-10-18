@@ -4,7 +4,7 @@ This is an action plan, not a record of successful API access. Update PASS/BLOCK
 
 | Probe | How to check | Pass evidence | Status |
 |---|---|---|---|
-| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and synthetic injected evaluation pass; default evaluation is 503 pending D | OFFLINE PASS (9 tests); live server not probed |
+| Local Python/FastAPI | See README setup and focused pytest command | TestClient health and injected evaluation pass; default evaluation is 503 pending runtime wiring | OFFLINE PASS (91 combined tests); live server not probed |
 | Grok API | Use approved model and vendor SDK/Responses client; test small structured response | Valid parsed `OrchestratorPlan` | UNTESTED |
 | Research provider | Tavily API key/search request, or xAI supported native web search | Real source record URLs logged without sensitive info | UNTESTED |
 | Photon 2.0 Beta | Confirm beta account access, channel/phone provision, precise callback auth/send docs | Visible inbound message and accepted outbound SMS | UNTESTED |
@@ -24,8 +24,8 @@ This is not a verified FastAPI webhook or shopping-assessment integration.
 Packet A currently exposes a disabled real callback endpoint and an independent,
 opt-in local mock simulator. Do not enable live callbacks by changing a flag:
 verified parsing/authentication, documented acknowledgement/retry semantics, and
-outbound transport still need implementation. No provider traffic was exercised.
-See `PACKET_A_HANDOFF.md` for exact integration wiring and limitations.
+outbound transport still need implementation. No Grok/Tavily or FastAPI Photon traffic was exercised by the merged suite. The separate Spectrum echo observation above is historical.
+See `NEXT_STEPS.md` for the current wiring assignment and `PACKET_WORKTREE_HANDOFF.md` for merged interfaces and limitations.
 
 - The public Photon 2.0 announcement describes a unified multi-channel messaging API. It does **not** establish that your account is enabled, that SMS is provisioned, or exactly which incoming callback fields/auth signature header your beta endpoint uses.
 - Several unrelated products are also named Photon; do not accidentally integrate Photon Engine game-chat, Photon Health, or another vendor's `/webhooks` API.

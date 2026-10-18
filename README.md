@@ -2,9 +2,9 @@
 
 **Project:** SMS-first, evidence-backed shopping decision assistant for fragrance purchases.
 **Track recommendation:** VISA: Reimagine Shopping; **sponsored side-track candidate:** Photon 2.0 Messaging Agent.
-**Status:** Packet A local FastAPI/workflow scaffold implemented and offline-tested. No live Photon, Grok, or Tavily integration.
-**Current phase:** D contract gate and B/C/D dependency integration.
-**Immediate team decision:** Supply D's executable contracts and verified provider interfaces/docs. Humans finalize tracks.
+**Status:** Packets A-D merged on `feat/packet-a-integration`; 91 offline tests pass. Grok/Tavily adapters exist; default application wiring and live shopping flow remain pending.
+**Current phase:** Runtime wiring and end-to-end validation. See [next steps](docs/NEXT_STEPS.md).
+**Immediate next step:** A wires the merged components into the application with explicit offline/live configuration. Paid API calls still require instruction. Humans finalize tracks.
 
 ## Run the local API
 
@@ -17,17 +17,17 @@ py -3.12 -m venv .venv
 ```
 
 `GET /healthz` performs no external calls. The default `POST /api/v1/evaluate`
-returns 503 until shared contracts and domain dependencies are injected.
+returns 503 until the merged contracts and domain components are injected.
 `POST /webhooks/photon` returns a local disabled 503; no vendor acknowledgement,
 authentication, or retry behavior is assumed.
 
-Integrate by constructing `Contracts(DShoppingRequest, DOrchestratorPlan, DAssessment)`
+Integrate by constructing `Contracts(ShoppingRequest, OrchestratorPlan, Assessment)`
 and `EvaluationWorkflow(contracts, extract, research, decide, settings)`, then call
 `create_app(workflow=workflow)`. The injected async extraction function accepts a
 request; async research accepts `(plan, task)` and returns evidence; synchronous
 decision accepts `(request, plan, evidence)` and returns D's assessment.
-These are A's proposed callable boundaries, awaiting B/C/D confirmation; A defines
-no replacement shared domain models. Research/URL/claim safety belongs to C and
+These callable boundaries are implemented; shared domain models are exported
+from `app.models`. Research/URL/claim safety belongs to C and
 decision/SMS formatting to D. This scaffold never fetches a supplied product URL.
 
 The opt-in `/api/v1/mock/messages` simulator requires
@@ -41,8 +41,9 @@ implemented. Do not expose it publicly as a production service.
 .venv/Scripts/python.exe -m pytest tests/test_api.py tests/test_photon.py tests/test_jobs.py -q
 ```
 
-Tests use explicitly synthetic stand-ins in A's test files, not finalized D
-contracts or real seller evidence. Jobs/deduplication are bounded, single-process,
+The full suite includes D's executable contracts and labeled synthetic fixtures,
+B/C mocked HTTP tests, and A's injected API/job tests. No live provider claims follow
+from these tests. Run `.venv/Scripts/python.exe -m pytest -q` (last run: 91 passed). Jobs/deduplication are bounded, single-process,
 non-durable, and lost on restart. Default limits: 32 active jobs, 1,024 dedupe
 records retained for one hour, two seller research calls, 20 seconds per evaluation
 or job, and 16 KiB request bodies. Capacity exhaustion rejects new events; sends
@@ -59,7 +60,7 @@ An independent TypeScript connection-test agent is in `app/adapters/spectrum`
 project and authorized test user are configured. Local credentials are in its
 ignored `.env`. This uses iMessage through Spectrum SDK, not the disabled FastAPI
 Photon webhook and not SMS. It currently echoes text; shopping workflow wiring
-remains blocked on B/C/D dependencies. A real inbound iMessage and completed reply
+remains pending runtime/provider wiring; B/C/D implementations are merged. A real inbound iMessage and completed reply
 request were observed; the user reported connection success. No provider delivery
 receipt was inspected.
 

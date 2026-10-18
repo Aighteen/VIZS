@@ -10,10 +10,11 @@ Shared manually read guide, not an automatically installed native skill. Read `A
 
 Dependencies: D supplies shared models first; B/C/D implementations replace typed fakes later. Do not duplicate extraction, research, or policy inside routes.
 
-Current implementation: A's scaffold exists; see `docs/PACKET_A_HANDOFF.md` and
-README for actual checks. D's models are absent, so the default evaluate endpoint
-fails closed with 503. Synthetic contracts exist only in A's tests. Do not mistake
-those test classes or the independent mock event for shared or Photon contracts.
+Current implementation: A-D are merged; shared contracts are in `app.models`.
+The default evaluate endpoint still fails closed with 503 because runtime wiring
+is pending. The combined offline suite passed 91 tests. See `docs/NEXT_STEPS.md`
+for the next A assignment; older packet handoffs describe historical results.
+The independent mock event is not a Photon wire contract.
 
 ## Acceptance
 
