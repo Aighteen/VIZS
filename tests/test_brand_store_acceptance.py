@@ -437,10 +437,36 @@ ALLBIRDS = BrandStore(  # Shopify-hosted brand domain (/products/<handle>?varian
 BRANDS = [LE_LABO, AESOP, WHITTARD, ALLBIRDS]
 
 
+# Lane C: brand-direct needs the reference page itself (infobox Website row plus a
+# lead sentence describing a brand, not a retailer), read through the fixed
+# Tavily Extract. Synthetic markdown shaped like the live 2026-10-17 extracts.
+REFERENCE_PAGES = {
+    "Le Labo": ("https://en.wikipedia.org/wiki/Le_Labo",
+                "| Type | Subsidiary |\n| Website | <https://www.lelabofragrances.com> |\n\n"
+                "**Le Labo** (French: the lab) is a slow perfumery brand born in Grasse, France.\n"),
+    "Aesop": ("https://en.wikipedia.org/wiki/Aesop_(brand)",
+              "| Founded | 1987 |\n| Website | [aesop.com](https://www.aesop.com) |\n\n"
+              "**Aesop** is an Australian luxury cosmetics brand founded in Melbourne.\n"),
+    # Honest shape: the article calls the company a tea retailer, so the strict
+    # lead rule does not grant brand-direct (accepted conservative miss).
+    "Whittard of Chelsea": ("https://en.wikipedia.org/wiki/Whittard_of_Chelsea",
+                            "| Website | [whittard.co.uk](http://whittard.co.uk) |\n\n"
+                            "**Whittard of Chelsea** is a British tea retailer founded in 1886.\n"),
+    "Allbirds": ("https://en.wikipedia.org/wiki/Allbirds",
+                 "| Website | [allbirds.com](http://allbirds.com) |\n\n"
+                 "**Allbirds** is an American [footwear](https://en.wikipedia.org/wiki/Footwear \"Footwear\") "
+                 "and apparel brand that was co-founded in 2015.\n"),
+}
+
+
 def brand_scenario(store: BrandStore, *, independent=None, own_hits=None, promise=None, **changes):
     hits = list(store.own_hits if own_hits is None else own_hits) + list(
         store.independent if independent is None else independent)
-    return Scenario(listing=store.listing, pages=dict(store.pages), search=hits[:5],
+    pages = dict(store.pages)
+    if store.name in REFERENCE_PAGES:
+        url, text = REFERENCE_PAGES[store.name]
+        pages[url] = text
+    return Scenario(listing=store.listing, pages=pages, search=hits[:5],
                     promise=promise or faithful_promises(list(store.stated.items())), **changes)
 
 
@@ -476,11 +502,22 @@ def test_brand_store_promise_rows_show_what_the_page_states(store):
     assert_no_accusation(text)
 
 
-@pytest.mark.parametrize("store", BRANDS, ids=lambda s: s.name)  # lane C: was END_GOAL xfail
+BRAND_DIRECT = [LE_LABO, AESOP, ALLBIRDS]
+
+
+def test_brand_described_as_a_retailer_is_a_conservative_miss():
+    assessment, text = evaluate(brand_scenario(WHITTARD))
+    assert assessment.seller_risk != "LOWER_RISK" and "Verify authorization" in text
+
+
+@pytest.mark.parametrize("store", BRAND_DIRECT, ids=lambda s: s.name)  # lane C: was END_GOAL xfail
 def test_END_GOAL_brand_store_named_official_by_two_independent_sources(store):
     scenario = brand_scenario(store)
     assessment, text = evaluate(scenario)
     assert "verify authorization" not in text.lower()
+    # Human decision 2026-10-17: brand-direct is LOWER_RISK / CONSIDER_BUYING.
+    assert assessment.seller_risk == "LOWER_RISK" and assessment.decision == "CONSIDER_BUYING"
+    assert "INSUFFICIENT_EVIDENCE" not in text
     assert assessment.decision != "AVOID" and assessment.seller_risk != "HIGHER_RISK"
     assert "Product authenticity is not established." in text
     assert_stated_topics_shown(assessment, text, store.stated)

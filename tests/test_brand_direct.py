@@ -24,7 +24,15 @@ def host_of(url):
     return urlsplit(url).hostname.removeprefix("www.")
 
 
-def identity(source, excerpt, listing=BRAND_URL, **change):
+# Reference-source excerpts are page spans that include the article lead
+# (see test_reference_page_*). Synthetic reference excerpts get a brand lead by
+# default so each negative below fails for its own reason, not a missing lead.
+BRAND_LEAD = "**Le Labo** is a perfumery brand founded in New York in 2006.\n"
+
+
+def identity(source, excerpt, listing=BRAND_URL, lead=BRAND_LEAD, **change):
+    if lead and brand_direct.is_reference(host_of(source)):
+        excerpt = lead + excerpt
     data = dict(claim="Unverified search excerpt about the site's official status: " + excerpt,
                 source_url=source, excerpt=excerpt, retrieved_at=NOW, seller_domain=host_of(listing),
                 evidence_type="search_snippet", claim_status="unknown", finding="seller_identity",
@@ -189,10 +197,35 @@ def test_user_named_brand_that_is_not_the_store_blocks_retailer_self_identity():
     sources = [("https://en.wikipedia.org/wiki/Sephora", "Sephora's official website is sephora-synthetic.com."),
                ("https://www.vogue-synthetic.com/x", "Visit the official online store at sephora-synthetic.com.")]
     assert_not_brand_direct(*run(store, sources, brand="Le Labo"))
-    # Brand unknown: the store is its own brand's official site; the reply says
-    # it holds only if the product is that brand's own (documented limitation).
-    assessment, sms = run(store, sources)
-    assert "only if the product is that brand's own" in sms
+
+
+@pytest.mark.parametrize("lead", [
+    # Live false positive 2026-10-17 (shape): a multi-brand beauty retailer whose
+    # Wikipedia infobox names its own domain.
+    "**Bluemercury** is an American luxury beauty products and spa retailer.\n",
+    "**Sephora** is a multinational retailer of personal care and beauty products.\n",
+    "**Nordstrom, Inc.** is an American luxury department store chain.\n",
+    "**Shop Synthetic** is an e-commerce platform for independent brands.\n",
+    "**Perfume Synthetic** is an authorized distributor of designer fragrance brands.\n",
+    "**Synthetic Store** is a company.\n",          # no brand/maker wording at all
+    "Synthetic Store is a perfumery brand.\n",       # not a lead line (no bold subject)
+])
+def test_reference_source_lead_must_describe_a_brand_not_a_retailer(lead):
+    store = "https://www.retail-synthetic.com/products/le-labo-santal-33"
+    reference = identity("https://en.wikipedia.org/wiki/Retail", "| Website | <https://www.retail-synthetic.com> |",
+                         store, lead=lead)
+    other = identity("https://www.vogue-synthetic.com/x", "Shop at the official store retail-synthetic.com.", store)
+    assert_not_brand_direct(*run(store, [], extra=[reference, other]))
+    assert brand_direct.lead_describes_brand(lead + "| Website | x |") is False
+
+
+def test_brand_lead_with_infobox_row_is_brand_direct():
+    reference = identity("https://en.wikipedia.org/wiki/Allbirds", "| Website | [allbirds.com](http://allbirds.com) |",
+                         "https://www.allbirds.com/products/x",
+                         lead="**Allbirds** is an American [footwear](https://en.wikipedia.org/wiki/Footwear) "
+                              "and apparel brand that was co-founded in 2015.\n")
+    assessment, sms = run("https://www.allbirds.com/products/x", [], extra=[reference])
+    assert assessment.seller_risk == "LOWER_RISK" and sms.startswith("[PARTIAL DATA] LOWER_RISK: Brand's own store")
 
 
 # ------------------------------------------------------------------ precedence
@@ -420,7 +453,9 @@ def test_C15_reference_registry_is_immutable_and_plain_ascii():
 
 WIKI_PAGE = ("# Le Labo\n\n| Type | Subsidiary |\n| Industry | Consumer goods |\n"
              "| Parent | Estée Lauder Companies |\n| Website | <https://www.lelabofragrances.com> |\n\n"
-             "Le Labo is a perfumery brand.\n")
+             "**Le Labo** (French: the lab) is a slow perfumery brand born in Grasse, France.\n\n## History\n")
+RETAILER_PAGE = WIKI_PAGE.replace("is a slow perfumery brand born in Grasse, France",
+                                  "is an American luxury beauty products and spa retailer")
 
 
 class ExtractingProvider(FakeProvider):
@@ -446,7 +481,9 @@ def brand_research(listing, records, pages):
 def test_reference_page_infobox_row_confirms_the_exact_domain():
     provider, result = brand_research(BRAND_URL, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
     assert provider.extracted == [([WIKI_URL], True, "reference_page")]
-    assert [e.excerpt for e in result.evidence] == ["| Website | <https://www.lelabofragrances.com> |"]
+    assert [e.excerpt for e in result.evidence] == [
+        "| Website | <https://www.lelabofragrances.com> |\n\n"
+        "**Le Labo** (French: the lab) is a slow perfumery brand born in Grasse, France."]
     assert result.evidence[0].excerpt in WIKI_PAGE  # exact span of retrieved text
     report = result.report()
     assert report.records_retained == 1 and report.records_received == 1
@@ -462,6 +499,18 @@ def test_reference_page_naming_the_real_domain_does_not_help_lookalikes(listing)
     _, result = brand_research(listing, [NEUTRAL_WIKI], {WIKI_URL: WIKI_PAGE})
     assert result.evidence == []
     assert_not_brand_direct(*run(listing, [], extra=result.evidence))
+
+
+def test_reference_page_of_a_retailer_gives_no_support():
+    provider, result = brand_research(BRAND_URL, [NEUTRAL_WIKI], {WIKI_URL: RETAILER_PAGE})
+    assert provider.extracted and result.evidence == []
+    assert_not_brand_direct(*run(BRAND_URL, [], extra=result.evidence))
+
+
+def test_reference_snippet_alone_is_not_enough_the_page_lead_is_needed():
+    # A reference snippet that supports but has no lead (the page could not be read).
+    snippet = identity(WIKI_URL, "Its official website is lelabofragrances.com.", lead=None)
+    assert_not_brand_direct(*run(BRAND_URL, [], extra=[snippet]))
 
 
 def test_reference_extract_only_for_curated_hosts_and_never_the_seller():
