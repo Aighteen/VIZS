@@ -158,3 +158,32 @@ def test_transport_rejects_errors_redirects_and_incomplete_output(response):
 def test_invalid_timeout_configuration(timeout):
     with pytest.raises(ValueError):
         GrokExtractor(timeout_seconds=timeout)
+
+def test_promise_extractor_keeps_provider_registry_and_rejects_invented_spans():
+    from app.research.promise_extractor import PromiseExtractor
+    from app.research.provider import SourceRecord
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    import json
+    class Client:
+        async def complete(self, message, schema):
+            assert "source_1" in message
+            return json.dumps({"records": [
+                {"topic": "returns", "status": "supported_as_statement", "merchant_statement": "Free returns", "explanation": "Merchant states free returns.", "quotes": [{"source_id": "source_1", "quote": "Free returns"}]},
+                {"topic": "arrival", "status": "supported_as_statement", "explanation": "invented", "quotes": [{"source_id": "source_1", "quote": "Guaranteed tomorrow"}]}
+            ]})
+    source = SourceRecord("https://shop.com/item", "Fixture", "Free returns within 30 days.", datetime.now(timezone.utc), content_kind="merchant_page")
+    plan = SimpleNamespace(product_url="https://shop.com/item")
+    sheet = asyncio.run(PromiseExtractor(Client(), data_mode="mock").extract(plan, [source]))
+    assert sheet.sources[0].content == source.excerpt
+    assert any(row.topic == "returns" and row.status == "supported_as_statement" for row in sheet.records)
+    assert not any(row.topic == "arrival" for row in sheet.records)
+    assert any(row.topic == "return_cost" and row.status == "unavailable" for row in sheet.records)
+
+
+def test_promise_extraction_missing_client_or_sources_unavailable_not_absent():
+    from app.research.promise_extractor import PromiseExtractor
+    from types import SimpleNamespace
+    sheet = asyncio.run(PromiseExtractor().extract(SimpleNamespace(product_url="https://shop.com/item"), []))
+    assert sheet.records and all(row.status == "unavailable" for row in sheet.records)
+    assert sheet.image_context.status == "unavailable"

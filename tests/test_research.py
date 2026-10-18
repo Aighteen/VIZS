@@ -132,3 +132,67 @@ def test_missing_input_and_unsafe_destination_skip_provider():
     assert result.report().provider_called is False
     plan.requires_user_input=True
     assert run(research.research_with_status(plan,task)).report().status=="skipped"
+
+def test_policy_extract_fixed_endpoint_and_provenance():
+    import json
+    calls = []
+    async def handler(request):
+        calls.append(request)
+        assert str(request.url) == "https://api.tavily.com/extract"
+        assert json.loads(request.content)["format"] == "text"
+        return httpx.Response(200, json={"results": [
+            {"url": "https://shop.com/returns", "raw_content": "Customer pays return shipping."},
+            {"url": "https://other.com/redirect", "raw_content": "substituted destination"},
+        ], "failed_results": [{"url": "https://shop.com/item"}]})
+    provider = TavilyProvider("fixture", transport=httpx.MockTransport(handler))
+    records = run(provider.extract_sources(["https://shop.com/item", "https://shop.com/returns"]))
+    assert len(records) == len(calls) == 1
+    assert records[0].content_kind == "merchant_page"
+    assert records[0].excerpt == "Customer pays return shipping."
+
+
+def test_policy_collection_reuses_search_without_new_search():
+    from app.research.promises import collect_promise_sources
+    plan = SimpleNamespace(product_url="https://shop.com/item", requires_user_input=False)
+    class Provider:
+        async def search(self, query):
+            raise AssertionError("Must reuse prior search")
+        async def extract_sources(self, urls):
+            assert urls == ["https://shop.com/item", "https://shop.com/returns"]
+            return [record("Return conditions", "https://shop.com/returns")]
+    async def validator(url): return url
+    result = run(collect_promise_sources(Provider(), plan, [record(url="https://other.com/a"), record(url="https://shop.com/returns")], destination_validator=validator))
+    assert result.status == "partial"
+
+
+@pytest.mark.parametrize("status", [302, 429, 500])
+def test_policy_extract_no_redirect_retry(status):
+    calls = []
+    async def handler(request):
+        calls.append(request)
+        return httpx.Response(status, headers={"location": "http://127.0.0.1"})
+    with pytest.raises(ResearchUnavailable):
+        run(TavilyProvider("fixture", transport=httpx.MockTransport(handler)).extract_sources(["https://shop.com/returns"]))
+    assert len(calls) == 1
+
+
+def test_rdap_fixed_origin_date_context_and_unsupported_suffix():
+    from app.research.domain import DomainLookup
+    calls = []
+    async def handler(request):
+        calls.append(request)
+        assert str(request.url) == "https://rdap.verisign.com/com/v1/domain/shop.com"
+        return httpx.Response(200, json={"ldhName": "SHOP.COM", "events": [{"eventAction": "registration", "eventDate": "2020-01-01T00:00:00Z"}], "links": [{"href": "http://127.0.0.1"}]})
+    lookup = DomainLookup(transport=httpx.MockTransport(handler))
+    result = run(lookup.lookup("www.shop.com"))
+    assert result.status == "context_only" and result.registered_at.year == 2020
+    assert run(lookup.lookup("shop.co.uk")).status == "unavailable"
+    assert run(lookup.lookup("127.0.0.1")).status == "unavailable"
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("payload", [{"ldhName": "other.com"}, {"ldhName": "shop.com", "events": [{"eventAction": "registration", "eventDate": "2999-01-01T00:00:00Z"}]}])
+def test_rdap_missing_wrong_or_future_date_unavailable(payload):
+    from app.research.domain import DomainLookup
+    async def handler(request): return httpx.Response(200, json=payload)
+    assert run(DomainLookup(transport=httpx.MockTransport(handler)).lookup("shop.com")).status == "unavailable"
