@@ -99,8 +99,7 @@ test("QA PH-03/SEC-01: Spectrum secrets never reach the Python API; provider key
   assert.match(text, /BRIDGE: EVALUATION_STATUS/);
 });
 
-test("QA SEC-01: provider keys are not handed to the bridge and never forwarded from bridge status lines",
-  { todo: "QA-04: launch.mjs passes the full env (XAI/TAVILY keys) to the bridge and redacts only Spectrum values" }, async () => {
+test("QA SEC-01: provider keys are not handed to the bridge and never forwarded from bridge status lines", async () => {
     const h = harness({ env: { ...SECRETS, ...PROVIDER }, onBridge: (b) => {
       b.stdout.write(`DELIVERY_STATUS ${PROVIDER.XAI_API_KEY}\n`);
       setImmediate(() => b.exit(0));

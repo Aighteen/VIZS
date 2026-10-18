@@ -31,7 +31,8 @@ claims, payments, card recommendations, or final risk decisions. If ambiguous or
 missing a listing, request clarification with no tasks. request_id is assigned by
 the backend; use 'backend' in that field. Leave status='ok', data_mode='partial'."""
 
-_URL = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
+_URL = re.compile(r"https?://[^\s<>\"]+", re.IGNORECASE)
+_PAIRS = {")": "(", "]": "[", "}": "{"}
 _HTTP_URL = TypeAdapter(HttpUrl)
 _MAX_OUTPUT_BYTES = 32768
 
@@ -88,10 +89,43 @@ class XAICompletionClient:
         return content
 
 
+def _trim_url(candidate: str, after: str, before: str) -> str:
+    """Remove sentence punctuation that follows a URL in prose (QA-03).
+
+    Rule, applied repeatedly to the last character:
+    - ``,;:!?`` are punctuation when the URL ends there.
+    - ``.`` is punctuation only at the end of the message or when the next text
+      starts a new sentence (whitespace then an uppercase letter, or a newline);
+      ``.../perfume. price $20`` keeps its dot as part of the listing URL.
+    - ``)``/``]``/``}`` are kept when balanced inside the URL
+      (``.../Perfume_(100ml)``) and stripped when unmatched (``(see https://x/p)``).
+    - ``'`` is part of the URL (``.../it's-50ml``) unless the URL was opened
+      with a quote (``'https://x/p'``).
+    Invented URLs are still rejected: the model's URL must exactly equal one of
+    these user-supplied URLs.
+    """
+    while candidate:
+        last = candidate[-1]
+        if last == ".":
+            if after.strip() and not re.match(r"\s*\n|\s+[A-Z]", after):
+                break
+        elif last in _PAIRS:
+            if candidate.count(_PAIRS[last]) >= candidate.count(last):
+                break
+        elif last == "'":
+            if not before.endswith("'"):
+                break
+        elif last not in ",;:!?":
+            break
+        after = last + after
+        candidate = candidate[:-1]
+    return candidate
+
+
 def _provided_urls(message: str) -> set[str]:
     urls = set()
     for match in _URL.finditer(message):
-        candidate = match.group().rstrip(".,;:!?)]}")
+        candidate = _trim_url(match.group(), message[match.end():], message[:match.start()])
         try:
             parsed = _HTTP_URL.validate_python(candidate)
         except ValidationError:
@@ -133,7 +167,7 @@ class GrokExtractor:
         if len(urls) != 1:
             return _clarify(request, "missing_input", "Please send one product listing URL to assess.")
         if self._client is None:
-            return _clarify(request, "unavailable", "Shopping extraction is unavailable; please try again later.")
+            return _clarify(request, "unavailable", "Shopping extraction is unavailable; the check could not be completed. Please try again later.")
         try:
             async with asyncio.timeout(self._timeout):
                 output = await self._client.complete(request.message_text, OrchestratorPlan.model_json_schema())
@@ -164,9 +198,9 @@ class GrokExtractor:
                 requires_user_input=False, status="ok", data_mode=self._data_mode,
             )
         except (TimeoutError, httpx.TimeoutException):
-            return _clarify(request, "timeout", "Shopping extraction timed out; please try again.")
+            return _clarify(request, "timeout", "Shopping extraction timed out; the check could not be completed. Please try again later.")
         except httpx.HTTPError:
-            return _clarify(request, "unavailable", "Shopping extraction is unavailable; please try again later.")
+            return _clarify(request, "unavailable", "Shopping extraction is unavailable; the check could not be completed. Please try again later.")
         except (ValueError, TypeError, KeyError, IndexError):
             # Do not log provider bodies, SMS contents, credentials, or identities.
-            return _clarify(request, "invalid_output", "I could not safely read that request; please resend the listing URL.")
+            return _clarify(request, "invalid_output", "I could not safely read that request; the check could not be completed. Please try again later.")

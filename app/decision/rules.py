@@ -2,6 +2,18 @@
 from app.models import Assessment, Decision, Evidence, OrchestratorPlan, Risk, ShoppingRequest, PromiseSheet
 
 
+# Marks a reply that must ask the user for a listing URL. Runtime replaces it when
+# the URL was supplied but extraction failed (Q2), so the phone reply never asks
+# for a URL the user already sent.
+URL_REQUEST = "Fragrance listing URL and product context"
+
+
+def _same_site(source_host: str | None, seller_host: str) -> bool:
+    source = (source_host or "").lower().rstrip(".").removeprefix("www.")
+    seller = seller_host.rstrip(".")
+    return source == seller or source.endswith("." + seller)
+
+
 def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evidence], promise_sheet: PromiseSheet | None = None) -> Assessment:
     if request.request_id != plan.request_id:
         raise ValueError("Mismatched request correlation")
@@ -16,13 +28,17 @@ def decide(request: ShoppingRequest, plan: OrchestratorPlan, evidence: list[Evid
     if not plan.product_url or plan.requires_user_input or plan.intent != "evaluate_purchase":
         action = Decision.NEED_MORE_INFORMATION
         summary = "Send the fragrance listing URL so the seller can be assessed."
-        missing = ["Fragrance listing URL and product context"]
+        missing = [URL_REQUEST]
     else:
         host = plan.product_url.host.lower().removeprefix("www.")
         relevant = [e for e in records if e.seller_domain and e.seller_domain.lower().removeprefix("www.") == host]
         selected = relevant
         grounded = [e for e in relevant if e.claim_status == "verified_fact" and e.excerpt]
-        authorized = [e for e in grounded if e.finding == "seller_authorized" and e.evidence_type == "official" and e.polarity == "supports"]
+        # A shop's self-asserted authorization is never manufacturer corroboration:
+        # evidence hosted on the listing seller's own domain (or a subdomain) is
+        # excluded however it is labeled (QA-01).
+        authorized = [e for e in grounded if e.finding == "seller_authorized" and e.evidence_type == "official"
+                      and e.polarity == "supports" and not _same_site(e.source_url.host, host)]
         adverse = [e for e in grounded if e.finding == "substantial_adverse" and e.evidence_type in {"regulatory", "investigation"} and e.polarity == "supports"]
         adverse_hosts = {e.source_url.host.lower().removeprefix("www.") for e in adverse}
         contradiction = any(e.polarity == "contradicts" for e in relevant) or bool(authorized and adverse)

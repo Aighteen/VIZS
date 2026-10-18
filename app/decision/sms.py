@@ -1,5 +1,22 @@
 """Bounded SMS body; carrier encoding and segment counts need live verification."""
+import re
+
+from app.decision.rules import URL_REQUEST
 from app.models import Assessment, Decision
+
+
+# Merchant text is untrusted. Messaging apps turn scheme URLs, "www." hosts and
+# bare domains into tappable links, so any link-like token inside a quoted
+# merchant span or condition is neutralized; only the labeled source URLs that
+# the formatter appends may be clickable (QA-02).
+_LINKISH = re.compile(
+    r"(?:[a-z][a-z0-9+.-]*://\S+)|(?:\bwww\.\S+)|(?:\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b(?:[/?#]\S*)?)",
+    re.IGNORECASE)
+LINK_REMOVED = "[link removed]"
+
+
+def neutralize_links(text: str) -> str:
+    return _LINKISH.sub(LINK_REMOVED, text)
 
 
 def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
@@ -9,6 +26,10 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
               Decision.AVOID: "Avoid this purchase: substantial adverse findings.",
               Decision.VERIFY_FIRST: "Seller authorization unconfirmed. Verify authorization and return terms before buying.",
               Decision.NEED_MORE_INFORMATION: "Send the fragrance listing URL and product context."}
+    if assessment.decision == Decision.NEED_MORE_INFORMATION and URL_REQUEST not in assessment.missing_information:
+        # The user supplied a URL, but extraction was unavailable, timed out or
+        # returned invalid output: do not ask for the URL again (Q2).
+        labels[Decision.NEED_MORE_INFORMATION] = "The check could not be completed; no seller conclusion was established. Please try again later."
     prefix = "[SYNTHETIC/MOCK] " if assessment.data_mode == "mock" else "[PARTIAL DATA] " if assessment.data_mode == "partial" else ""
     text = f"{prefix}{assessment.seller_risk.value}: {labels[assessment.decision]} Product authenticity is not established."
     statuses = {report.status for report in assessment.research}
@@ -35,12 +56,12 @@ def format_sms(assessment: Assessment, max_chars: int = 1000) -> str:
                 detail = f" {label}: check unavailable."
             else:
                 qualifier = "Potentially differing terms; compare conditions" if row.status == "conflicting" else "Merchant statement" if row.status == "supported_as_statement" else "Corroborated statement"
-                conditions = "; ".join(v for v in row.conditions.model_dump().values() if v)
+                conditions = "; ".join(neutralize_links(v) for v in row.conditions.model_dump().values() if v)
                 detail = f" {qualifier} ({label}" + (f"; {conditions}" if conditions else "") + "):"
                 for quote in row.quotes:
                     source = registry.get(quote.source_id)
                     if source:
-                        detail += f' "{quote.quote}" {source.url}'
+                        detail += f' "{neutralize_links(quote.quote)}" {source.url}'
                 detail += " Fulfillment unverified."
             row_urls = {str(registry[q.source_id].url) for q in row.quotes if q.source_id in registry}
             if len(promise_urls | row_urls) <= 2 and len(text + detail) <= max_chars:

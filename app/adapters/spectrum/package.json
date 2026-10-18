@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "shop": "node src/launch.mjs",
     "shop:check": "node src/launch.mjs --check",
-    "test": "node --test src/bridge-handler.test.mjs src/launch.test.mjs"
+    "test": "node --test src/bridge-handler.test.mjs src/launch.test.mjs src/qa-launch.test.mjs"
   },
   "dependencies": {
     "@spectrum-ts/imessage": "^12.11.0",

@@ -1,5 +1,16 @@
 """Deterministic span/provenance checks, independent of model assertions."""
-from app.models import PromiseRecord, PromiseSheet, PromiseSource
+from app.models import PromiseConditions, PromiseRecord, PromiseSheet, PromiseSource
+
+
+# A business address is not proof of shipping origin (Q4). A positive
+# shipping_origin row must quote explicit origin wording.
+ORIGIN_WORDING = ("ships from", "shipped from", "dispatched from", "dispatches from", "warehouse",
+                  "fulfilled from", "fulfillment center", "sent from", "origin")
+ORIGIN_NOT_PROVEN = "Not disclosed in inspected sources: an address is not proof of shipping origin."
+
+
+def _has_origin_wording(row: PromiseRecord) -> bool:
+    return any(word in q.quote.casefold() for q in row.quotes for word in ORIGIN_WORDING)
 
 
 def _host(value: str) -> str:
@@ -70,5 +81,15 @@ def validate_promise_sheet(sheet: PromiseSheet, sources: list[PromiseSource], se
             "not_disclosed": "Not disclosed in inspected sources.",
             "unavailable": "This check was unavailable; no conclusion was drawn.",
         }
+        if (row.topic == "shipping_origin" and row.status in {"supported_as_statement", "independently_corroborated"}
+                and not _has_origin_wording(row)):
+            downgraded = row.model_copy(update={"status": "not_disclosed", "quotes": [], "merchant_statement": None,
+                                                "conditions": PromiseConditions(),
+                                                "explanation": ORIGIN_NOT_PROVEN})
+            downgraded_key = (row.topic, "not_disclosed", ())
+            if downgraded_key not in seen:
+                seen.add(downgraded_key)
+                rows.append(downgraded)
+            continue
         rows.append(row.model_copy(update={"explanation": descriptions[row.status]}))
     return sheet.model_copy(update={"seller_domain": domain, "sources": list(registry.values()), "records": rows})

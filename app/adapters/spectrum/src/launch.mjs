@@ -15,6 +15,28 @@ export const SPECTRUM_DIR = path.resolve(HERE, "..");
 export const REPO_ROOT = path.resolve(SPECTRUM_DIR, "../../..");
 export const DEFAULT_PORT = 8787;
 export const REQUIRED_KEYS = ["PROJECT_ID", "PROJECT_SECRET", "VIZS_REGISTERED_RECIPIENT"];
+// Credentials the bridge never needs; also redacted from any forwarded output (QA-04).
+export const REDACT_KEYS = ["XAI_API_KEY", "TAVILY_API_KEY", "VIZS_EXTENSION_TOKEN"];
+// Least-privilege bridge environment (QA-04): basic OS/Node variables, network
+// proxy/CA settings, and the variables the Spectrum SDK and its gRPC transport read
+// (SPECTRUM_IMESSAGE_ADDRESS, GRPC_*). Everything else, including provider keys and
+// the extension token, is withheld. REQUIRED_KEYS and VIZS_LOCAL_API are added after.
+export const BRIDGE_ENV_KEYS = [
+  "PATH", "Path", "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE", "TZ",
+  "SYSTEMROOT", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+  "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "SYSTEMDRIVE",
+  "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy", "grpc_proxy", "no_grpc_proxy",
+  "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR", "SPECTRUM_IMESSAGE_ADDRESS",
+];
+
+export function bridgeEnvironment(env, cfg, localApi) {
+  const picked = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value !== undefined && (BRIDGE_ENV_KEYS.includes(key) || /^GRPC_[A-Z_]+$/.test(key))) picked[key] = value;
+  }
+  return { ...picked, ...cfg, VIZS_LOCAL_API: localApi };
+}
+
 export const EXIT = { ok: 0, failed: 1, config: 2, busy: 3 };
 const SIGNAL_EXIT = { SIGINT: 130, SIGTERM: 143, SIGHUP: 129, SIGBREAK: 130 };
 // Only the bridge's own privacy-safe status lines are forwarded.
@@ -155,6 +177,17 @@ export async function run(argv, overrides = {}) {
   if (envFileFound) { try { fileValues = parseEnv(d.readFile(envFile)); } catch { say("LAUNCHER_WARNING: spectrum .env unreadable"); } }
   const cfg = Object.fromEntries(REQUIRED_KEYS.map((k) => [k, String(d.env[k] || fileValues[k] || "").trim()]));
   for (const value of Object.values(cfg)) if (value.length >= 4) secrets.push(value);
+  // Provider keys and the extension token are redacted too, from the process env,
+  // the spectrum .env, or the repo-root .env the Python API reads (values never printed).
+  let rootValues = {};
+  const rootEnv = path.join(d.root, ".env");
+  try { if (d.exists(rootEnv)) rootValues = parseEnv(d.readFile(rootEnv)); } catch { /* redaction is best effort */ }
+  for (const key of REDACT_KEYS) {
+    for (const source of [d.env, fileValues, rootValues]) {
+      const value = String(source[key] ?? "").trim();
+      if (value.length >= 4 && !secrets.includes(value)) secrets.push(value);
+    }
+  }
   const bridgeScript = path.join(d.spectrumDir, "src", "test-bridge.mjs");
   const bridgePresent = d.exists(bridgeScript);
   const sdkPresent = d.exists(path.join(d.spectrumDir, "node_modules", "spectrum-ts"));
@@ -185,7 +218,7 @@ export async function run(argv, overrides = {}) {
     signalName = name; say(`LAUNCHER_SIGNAL: ${name}; stopping`); onStopRequested();
   });
   try {
-    return await supervise({ d, opts, port, cfg, python, bridgeScript, say, stopRequested, signal: () => signalName });
+    return await supervise({ d, opts, port, cfg, python, bridgeScript, say, secrets, stopRequested, signal: () => signalName });
   } finally {
     unsubscribe();
     lock.release();
@@ -193,7 +226,7 @@ export async function run(argv, overrides = {}) {
   }
 }
 
-async function supervise({ d, opts, port, cfg, python, bridgeScript, say, stopRequested, signal }) {
+async function supervise({ d, opts, port, cfg, python, bridgeScript, say, secrets, stopRequested, signal }) {
   const healthUrl = `http://127.0.0.1:${port}/healthz`;
   const expectedMode = opts.live ? "live" : "offline";
   const within = (promise, ms) => new Promise((resolve) => {
@@ -246,7 +279,7 @@ async function supervise({ d, opts, port, cfg, python, bridgeScript, say, stopRe
     say(`LAUNCHER_API_READY: status=ok evaluation_ready=true provider_mode=${health.provider_mode}`);
     if (opts.check) { say("LAUNCHER_CHECK_OK: offline API started and answered /healthz; Spectrum not started"); return EXIT.ok; }
 
-    const bridgeEnv = { ...d.env, ...cfg, VIZS_LOCAL_API: `http://127.0.0.1:${port}/api/v1/evaluate-message` };
+    const bridgeEnv = bridgeEnvironment(d.env, cfg, `http://127.0.0.1:${port}/api/v1/evaluate-message`);
     say("LAUNCHER_BRIDGE: starting bounded iMessage bridge (registered recipient, <=3 messages, 1 URL evaluation, 10-minute expiry)");
     bridge = track(d.spawn(d.nodePath, [bridgeScript], { cwd: d.spectrumDir, env: bridgeEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }));
     let suppressed = 0;
@@ -256,7 +289,7 @@ async function supervise({ d, opts, port, cfg, python, bridgeScript, say, stopRe
       const lines = readline.createInterface({ input: stream, crlfDelay: Infinity });
       streams.push(new Promise((resolve) => lines.once("close", resolve)));
       lines.on("line", (line) => {
-        const safe = forward && line.length <= 4000 && FORWARD.test(line) && !Object.values(cfg).some((v) => v.length >= 4 && line.includes(v));
+        const safe = forward && line.length <= 4000 && FORWARD.test(line) && !secrets.some((v) => line.includes(v));
         if (safe) say("BRIDGE: " + line); else suppressed++;
       });
     };

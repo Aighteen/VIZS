@@ -64,9 +64,9 @@ Keys alone never enable provider calls. `VIZS_PROVIDER_MODE=live` (or `dev_serve
 | Endpoint | Purpose |
 |---|---|
 | `GET /healthz` | No external calls; reports assembly readiness and provider mode, not provider access |
-| `POST /api/v1/evaluate` | Local developer evaluation; body `{request_id, message_text, channel: "debug"}`; returns the `Assessment` |
-| `POST /api/v1/evaluate-message` | Loopback bridge used by the Spectrum test bridge; returns `{assessment, message_text}` |
-| `POST /api/v1/extension/evaluate` | Extension route: same body and response as `evaluate-message`, plus pairing and budget checks (below) |
+| `POST /api/v1/evaluate` | Local developer evaluation; body `{request_id, message_text, channel: "debug"}`; returns the `Assessment`. Requires `Content-Type: application/json` (else 415); any request with an `Origin` header gets 403 (not for browsers) |
+| `POST /api/v1/evaluate-message` | Loopback bridge used by the Spectrum test bridge; returns `{assessment, message_text}`. Same JSON-only / no-`Origin` rule as `/evaluate` |
+| `POST /api/v1/extension/evaluate` | Extension route: same body and response as `evaluate-message`, plus pairing, Origin allowlist and budget checks (below); also requires `application/json` (415) |
 | `POST /api/v1/mock/messages` | Opt-in simulator (`VIZS_ENABLE_MOCK_SMS=true`); body `{"event_id","text"}`; **not Photon JSON**, output labeled `MOCK SIMULATION` |
 | `POST /webhooks/photon` | Always 503; no Photon callback, auth or ACK contract is assumed |
 
@@ -84,7 +84,7 @@ $body = @{ request_id = 'local-1'; message_text = 'Check https://example.com/per
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/evaluate -ContentType 'application/json' -Body $body
 ```
 
-In offline mode a valid request returns a partial assessment explaining that extraction is unavailable; a missing URL returns a clarification.
+In offline mode a valid request returns a partial assessment explaining that extraction is unavailable and the check could not be completed (try again later); it does not ask again for a URL the user already sent. A missing URL returns a clarification asking for it. Declared bodies over the size cap get 413 before they are read.
 
 ### Extension access
 

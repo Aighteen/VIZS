@@ -2,7 +2,31 @@
 
 Owner: QA/verification session, branch `feat/qa-verification`. All tests use SYNTHETIC data and mocked HTTP transports; no live calls, keys, DNS, messages, push or deployment.
 
-## Questions for tech lead
+## Resolution (branch `fix/qa-findings`, commit `f61bd76`)
+
+All four findings are fixed, and the tech lead has answered Q1-Q5. The QA xfail and todo markers are removed, so those tests now run as normal tests. Results: `pytest` **362 passed, 0 xfailed**; extension **75 pass**; spectrum `npm test` **35 pass, 0 todo** (it now includes `qa-launch.test.mjs`); `npm run typecheck` is clean.
+
+- **QA-01 fixed** (`app/decision/rules.py`). If official, seller_authorized or verified_fact evidence is hosted on the listing seller's own host, `www.` host or a subdomain of it, it is excluded from authorization. Support from the manufacturer's domain still gives LOWER_RISK.
+- **QA-02 fixed** (`app/decision/sms.py`). Inside merchant quotes and conditions, scheme URLs, `www.` hosts and bare domains are replaced with `[link removed]`. These are all forms that messaging apps turn into links. The only links in the reply are the labeled source links, at most two. The rest of each quote is kept.
+- **QA-03 fixed** (`app/services/grok.py::_trim_url`). Rule:
+  - `,;:!?` at the end of a URL are treated as punctuation.
+  - A final `.` is punctuation only at the end of the message, or when the next text starts a new sentence (whitespace then an uppercase letter, or a newline). So `.../perfume. price $20` keeps its dot.
+  - A closing `)`/`]`/`}` is kept when it has a matching opener inside the URL, and stripped when unmatched.
+  - `'` is part of the URL unless the URL was opened with a quote.
+  - Grok's URL must still exactly equal one of the URLs the user supplied.
+- **QA-04 fixed** (`app/adapters/spectrum/src/launch.mjs`).
+  - The bridge gets an allowlisted env: basic OS/Node variables, proxy/CA variables, `GRPC_*`, `SPECTRUM_IMESSAGE_ADDRESS`, the three Spectrum keys and `VIZS_LOCAL_API`.
+  - `XAI_API_KEY`, `TAVILY_API_KEY` and `VIZS_EXTENSION_TOKEN` are not passed to the bridge.
+  - Those three values are redacted from output whether they come from the process env, the spectrum `.env` or the root `.env`. A bridge status line that contains one is suppressed.
+- **Q1 decided and implemented.** `/api/v1/evaluate` and `/api/v1/evaluate-message` return 403 for any `Origin` header and 415 for any Content-Type other than `application/json`. Both checks run before the body is read. `/api/v1/extension/evaluate` keeps its pairing, Origin allowlist and budget checks, and also requires JSON (415). A body that declares a Content-Length over the cap gets 413 before it is read. One QA assertion changed: `tests/test_qa_security.py` expected 422 for a `{bad` body sent to the extension route without a Content-Type. That request now gets 415 under Q1, and the 422 case is asserted with `application/json`.
+- **Q2 decided and implemented.** If extraction is unavailable, times out or returns invalid output after the user sent a URL, the reply says the check could not be completed and to try again later. It does not ask for the URL. If no URL was sent, the reply still asks for one.
+- **Q3 decided: deferred.** Detection of stale terms in PROM-07 is out of scope for the hackathon (see ACCEPTANCE_TESTS). The unrelated-seller, region and conflict parts stay covered.
+- **Q4 decided and implemented** (`app/decision/promises.py`). A `shipping_origin` row that is supported or corroborated must quote explicit origin wording: ships/shipped/sent/dispatched/dispatches/fulfilled from, warehouse, fulfillment center, or origin. Otherwise the row is downgraded to `not_disclosed` with the explanation "an address is not proof of shipping origin".
+- **Q5 decided: no code change.** The "up to two" limit applies to the extension's Sources list. Promise quotes keep their own citation links (EXTENSION_SCOPE result panel bullet). No QA test treated this as open.
+
+New regression tests: `tests/test_qa_fixes.py`, plus a QA-04 test in `app/adapters/spectrum/src/launch.test.mjs`.
+
+## Questions for tech lead (original, answered above)
 
 - **Q1 (security, A).** `/api/v1/evaluate` and `/api/v1/evaluate-message` (`app/api/routes.py:36`, `:55`) have no pairing, Origin check or rate budget, and they parse the body no matter what the Content-Type is. A web page open in the same browser can send a no-preflight `text/plain` POST to `http://127.0.0.1:<port>/api/v1/evaluate`. I verified this with a mocked live-mode probe: it returns 200 and calls Grok, Tavily search, Tavily extract and RDAP. CORS stops the page reading the response, but the paid calls still happen. ACCEPTANCE_TESTS limits API-01/02 to the extension route, so I have not marked this xfail. Should these routes reject requests that carry a browser `Origin` header, require a non-simple Content-Type, or accept only the Spectrum bridge?
 - **Q2 (A/D).** When extraction is unavailable, times out or returns invalid output, the phone reply says "Shopping extraction is unavailable; please try again later. [PARTIAL DATA] INSUFFICIENT_EVIDENCE: Send the fragrance listing URL and product context." That asks for a URL the user already sent (`app/decision/sms.py:11` label plus the `app/api/routes.py:60` prefix). Is this the intended wording?
