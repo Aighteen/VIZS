@@ -1,6 +1,6 @@
 # Tech lead handoff
 
-For any AI coding tool (Claude Code, Codex, Cursor, Copilot) or person taking over coordination. Snapshot: Saturday Oct 17 2026, late evening PDT, local `main` at `85c7f62`. Nothing has been pushed to GitHub since `62f1ac8`.
+For any AI coding tool (Claude Code, Codex, Cursor, Copilot) or person taking over coordination. Snapshot: Saturday Oct 17 2026, late evening PDT, local `main` at `506e562`. Nothing has been pushed to GitHub since `62f1ac8`.
 
 ## Read first
 
@@ -16,7 +16,7 @@ The tech lead session split work into git worktrees under `.claude/worktrees/` (
 | Branch | State |
 |---|---|
 | `docs/status-refresh`, `feat/photon-launcher`, `feat/pet-extension`, `feat/qa-verification`, `fix/qa-findings` | Merged into `main` |
-| `fix/qa-round2` | **In progress** at handoff (fixes QA-06/07/08 and decisions Q6-Q8, see below). If its worktree has commits, review, re-run suites and merge; if empty, redo from the brief below |
+| `fix/qa-round2` | Merged at `506e562` (548 / 77 / 38 tests, 0 xfail). QA round 3 (final verification + readiness verdict) was in progress on `feat/qa-verification` at handoff |
 
 ### `fix/qa-round2` brief (human-decided)
 
@@ -27,14 +27,14 @@ The tech lead session split work into git worktrees under `.claude/worktrees/` (
 5. Extension wraps the tab URL as `Check this listing <URL>` (+ ` price $X.XX`) so trailing `.?!;:)` are kept (`extension/src/lib/request.js`, backend `_trim_url`).
 6. Add `src/qa-round2.test.mjs` to `npm test` in `app/adapters/spectrum/package.json`.
 7. Possessive `https://shop.com's` URL: fix only if trivial.
-Then remove the matching xfails and have QA verify (round 3).
+(Done; kept for reference.) After any extension change, reload it in `chrome://extensions`.
 
 ## Test commands (macOS)
 
 ```sh
-python -m pytest -q                                   # 453 passed, 13 xfailed at 85c7f62
+python -m pytest -q                                   # 548 passed at 506e562
 cd extension && node --test test/*.test.js            # 77 pass
-cd app/adapters/spectrum && npm ci && npm test        # 35 pass (node --test src/*.test.mjs: 38)
+cd app/adapters/spectrum && npm ci && npm test        # 38 pass
 ```
 
 This machine has no project `.venv`; the tech lead used a scratch venv. Create one with `python3 -m venv .venv && .venv/bin/python -m pip install -e '.[test]'`. Node v26 is installed via Homebrew.
@@ -48,7 +48,7 @@ This machine has no project `.venv`; the tech lead used a scratch venv. Create o
 
 ## Remaining before Sunday 10:00 AM PDT final
 
-- Merge `fix/qa-round2`, QA round 3, record LIVE-01 and PH-04 results.
+- Merge QA round 3, record LIVE-01 and PH-04 results.
 - Manual extension checks listed in `extension/README.md` (drag/keyboard, reduced motion, navigation mid-request).
 - Update README/NEXT_STEPS status, then push to GitHub **only when the human says so**, verify the public repo has no secrets.
 - Human-only: Devpost draft (was due Sat 10:30 PM), video, final submission by 9:15 AM target.
