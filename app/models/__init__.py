@@ -86,12 +86,61 @@ class ResearchReport(Contract):
         return self
 
 
+class PromiseSource(Contract):
+    """Provider-returned content; never accept model-written text as source proof."""
+    source_id: str = Field(min_length=1, max_length=80)
+    url: HttpUrl
+    title: str | None = Field(default=None, max_length=300)
+    retrieved_at: AwareDatetime
+    content: str = Field(min_length=1, max_length=20000)
+    content_kind: Literal["merchant_page", "search_snippet", "independent_page"]
+    seller_domain: str = Field(min_length=1, max_length=253)
+    data_mode: Literal["live", "partial", "mock"] = "partial"
+
+
+class PromiseQuote(Contract):
+    source_id: str = Field(min_length=1, max_length=80)
+    quote: str = Field(min_length=1, max_length=1200)
+
+
+class PromiseConditions(Contract):
+    region: str | None = Field(default=None, max_length=120)
+    time: str | None = Field(default=None, max_length=200)
+    eligibility: str | None = Field(default=None, max_length=300)
+
+
+class PromiseRecord(Contract):
+    topic: Literal["shipping_origin", "processing_time", "transit_time", "arrival", "returns", "return_cost", "domain_history", "photos", "domain_registration", "photo_reuse", "ai_photo"]
+    status: Literal["supported_as_statement", "independently_corroborated", "conflicting", "not_disclosed", "unavailable"]
+    merchant_statement: str | None = Field(default=None, max_length=1200)
+    explanation: str = Field(min_length=1, max_length=700)
+    quotes: list[PromiseQuote] = Field(default_factory=list, max_length=6)
+    conditions: PromiseConditions = Field(default_factory=PromiseConditions)
+
+
+class PromiseContext(Contract):
+    status: Literal["unavailable", "unknown", "context_only", "available"] = "unavailable"
+    explanation: str = Field(default="This check is not available; no conclusion was drawn.", min_length=1, max_length=500)
+    source_url: HttpUrl | None = None
+    retrieved_at: AwareDatetime | None = None
+    registered_at: AwareDatetime | None = None
+
+
+class PromiseSheet(Contract):
+    seller_domain: str | None = Field(default=None, max_length=253)
+    sources: list[PromiseSource] = Field(default_factory=list, max_length=8)
+    records: list[PromiseRecord] = Field(default_factory=list, max_length=12)
+    domain_context: PromiseContext = Field(default_factory=PromiseContext)
+    image_context: PromiseContext = Field(default_factory=PromiseContext)
+
+
 class Assessment(Contract):
     request_id: str = Field(min_length=1, max_length=128)
     seller_risk: Risk
     decision: Decision
     summary: str = Field(min_length=1, max_length=500)
     evidence: list[Evidence] = Field(default_factory=list, max_length=30)
+    promise_sheet: PromiseSheet | None = None
     research: list[ResearchReport] = Field(default_factory=list, max_length=3)
     missing_information: list[str] = Field(default_factory=list, max_length=10)
     data_mode: Literal["live", "partial", "mock"]

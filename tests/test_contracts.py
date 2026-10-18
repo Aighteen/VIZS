@@ -41,3 +41,12 @@ def test_research_report_count_and_status_consistency():
     for fields in [dict(status="partial"),dict(status="filtered"),dict(status="empty",provider_called=True,records_received=1,records_retained=1),dict(status="partial",records_received=1,records_retained=1),dict(status="partial",provider_called=True,records_received=2,records_retained=1)]:
         with pytest.raises(ValidationError):
             ResearchReport(**fields)
+
+
+@pytest.mark.parametrize("name", ["conflict", "supported", "missing", "unavailable"])
+def test_promise_contract_fixtures(name):
+    from app.models import PromiseSheet
+    sheet = PromiseSheet.model_validate_json(Path(f"tests/fixtures/promise_{name}.json").read_text())
+    assert sheet.domain_context.status == "unavailable"
+    assert sheet.image_context.status == "unavailable"
+    assert all(source.data_mode == "mock" for source in sheet.sources)
