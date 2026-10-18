@@ -4,17 +4,17 @@
 
 ## Mission
 
-Implement **an SMS-first AI shopping decision assistant for fragrance purchases**. Given a product URL and optional price, return an evidence-backed **seller credibility assessment** and actionable shopping decision by SMS. Grok organizes the reasoning; Python executes the policy and arithmetic. **An unknown seller is not automatically fraudulent, and a low price does not prove counterfeit goods.**
+Implement **a fragrance shopping assistant with two core channels: Photon messaging and a Chrome extension with an animated on-page pet**. Given the active product URL and optional confirmed price, return an evidence-backed **seller credibility assessment** and actionable shopping decision through either a Photon reply or the pet's result panel. The pet shows honest search progress; Photon messaging and the extension are both core product scope, sharing one backend. See `docs/EXTENSION_SCOPE.md` for the current scope (extension not yet implemented) and `docs/CREDIBILITY_CHECKING.md` for the user-supplied promise-first credibility method. Compare merchant wording with quoted evidence and unknowns; broader payment/training/dispute features in the reference are not adopted. Grok organizes the reasoning; Python executes the policy and arithmetic. **An unknown seller is not automatically fraudulent, and a low price does not prove counterfeit goods.**
 
 **Primary title track proposed:** VISA: Reimagine Shopping. **Sponsored side track proposed:** Photon Messaging Agent. Only humans may finalize/submit track choices.
 
 ## Required context, in order
 
-Read `docs/PROJECT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/API_CONTRACTS.md`, `docs/IMPLEMENTATION_TASKS.md`, `docs/SPRINT_PLAN.md`, and, near submission, `docs/SUBMISSION_CHECKLIST.md`. If source code exists, inspect it; these docs propose contracts, not proof of completed implementation.
+Read `docs/EXTENSION_SCOPE.md` for current product direction, then `docs/PROJECT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/API_CONTRACTS.md`, `docs/IMPLEMENTATION_TASKS.md`, `docs/SPRINT_PLAN.md`, and, near submission, `docs/SUBMISSION_CHECKLIST.md`. If source code exists, inspect it; these docs propose contracts, not proof of completed implementation.
 
 ## Priorities and hard limits
 
-- **P0 first:** Photon inbound/outbound SMS, FastAPI webhook adapter, Grok classification, seller research with real source URLs, source/claim validation, deterministic risk decision, concise SMS response.
+- **P0 first:** both Photon inbound/outbound messaging and a user-triggered Chrome extension/pet UI, sharing the FastAPI/Grok/Tavily workflow, real source URLs, claim validation and deterministic policy. Provide honest request states, cited replies and a clear result panel. API keys stay server-side; A owns safe backend access. Preserve the tested iMessage path, verify SMS separately, and do not invent Photon contracts.
 - **P1 only after P0:** matched-product pricing, wallet-based card-rewards calculations, `DETAILS` follow-up, parallel research.
 - **Not this hackathon unless explicitly approved:** autonomous payment, Visa TAP, storing PAN/CVV, massive scraping, fine-tuning, unproven authenticity percentage, microservice swarm, Redis/Celery/Postgres without demonstrated need.
 - **Submission:** Saturday Oct 17 **10:30 PM PDT mandatory initial draft**; Sunday Oct 18 **10:00 AM PDT final** with video and uploaded linked source code. Plan buffers. Coding eligible only in event-approved window; see organizer guide and 70/30 rule.

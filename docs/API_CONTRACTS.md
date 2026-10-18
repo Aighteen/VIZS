@@ -99,3 +99,27 @@ send_text(destination, body, correlation_id) -> SendResult
 - Webhook validation failure → reject (exact status depends on documented Photon retry contract).
 - Duplicate inbound → idempotent no duplicate outbound response.
 - Timeout → bounded status/follow-up or explicit failure; do not leave user expecting a result if work died.
+
+## Executable Contract gate (Packet D)
+
+`app.models` is the executable Pydantic v2 source of truth. All contracts forbid extra fields and bound strings/collections. Money uses Decimal; evidence timestamps require timezone information. Only `verify_seller` is permitted at P0. Plan fields add optional brand, clarification, bounded status and data_mode. Evidence requires an actual source_url and retrieval timestamp; gaps are assessment missing_information, never invented source records. Evidence adds excerpt, optional evidence_id and seller_domain, explicit finding and polarity, and data_mode. Search snippets must not automatically become verified_fact.
+
+`tests/fixtures/positive.json` and `insufficient.json` are SYNTHETIC, mock-labeled contract examples, not real research. Risk/decision combinations are validated; mock/partial evidence cannot produce a live-labeled assessment. HttpUrl syntax is not SSRF protection; C owns DNS/redirect safety.
+
+Policy integration: `decide(request, plan, evidence) -> Assessment`; `format_sms(assessment) -> str`. Research yields `list[Evidence]`. Strong findings must refer to the listing seller via seller_domain. Official supported authorization permits LOWER_RISK; two independent regulatory/investigation substantial adverse findings permit HIGHER_RISK. Conflicting or weak records conservatively yield VERIFY_FIRST. These are prototype decision criteria, never authenticity verification.
+
+
+## Research response follow-up
+
+`Evidence.evidence_type` additionally accepts `search_snippet`. These records remain `claim_status=unknown`, neutral and non-decisive; relevant records are retained as explicitly unverified source references even when the decision remains VERIFY_FIRST. Existing risk criteria are unchanged.
+
+`Assessment.research` is a default-empty list of up to three `ResearchReport` records. Fields: provider=tavily, status=partial/empty/filtered/unavailable/timeout/unsafe_url/skipped, provider_called, records_received, records_retained, records_filtered. Counts are bounded 0..5 per call and received=retained+filtered. Partial requires retained records; filtered requires received records and zero retained; other states contain no records. These counts describe research normalization, before policy selects its decision evidence.
+
+`POST /api/v1/evaluate-message` is the local bridge endpoint returning `{assessment, message_text}` using the same evaluation/policy and D formatter; no Photon callback payload or authentication schema is implied. SDK inbound authentication and registered-sender admission are handled by the bounded Spectrum test listener. Developer API remains loopback-only in tests.
+
+
+## Promise contract gate (completion build)
+
+Assessment.promise_sheet is optional (default null), preserving old callers. PromiseSheet holds seller_domain, up to eight PromiseSource records and twelve PromiseRecord rows plus domain_context/image_context. Sources carry source_id, url, retrieved_at, provider-returned content (20,000 characters maximum), content_kind merchant_page/search_snippet/independent_page, seller_domain and data_mode. Records carry topic, status, merchant_statement, explanation, quotes [{source_id, quote}] and conditions {region,time,eligibility}. Statuses: supported_as_statement, independently_corroborated, conflicting, not_disclosed, unavailable. Merchant statements are not verified fulfillment. Domain context may carry registered_at; registration is not business age or fraud evidence. Image checks default unavailable.
+
+Python gate: validate_promise_sheet(sheet, sources, seller_domain=None) -> PromiseSheet. The sources argument is REQUIRED and supplied independently by provider code, never by the model. Quotes must be exact spans of that registry; missing/unrelated sources and invented spans reject rows. Model source content is never a trust authority. decide(request, plan, evidence, promise_sheet=None) preserves existing callers. Both channels consume the same attached sheet. Synthetic fixtures promise_{supported,conflict,missing,unavailable}.json are not live research.

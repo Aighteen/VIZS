@@ -1,0 +1,58 @@
+# Current scope: Photon messaging and a browser extension with an animated pet
+
+Approved direction: the user wants both Photon messaging and a Chrome extension with an animated on-page pet that shows when research is running. Both channels are core scope and share the existing assessment backend. This is a scope/design update only; extension implementation has not started. Adding the extension does not replace or downgrade Photon.
+
+## Product and first release
+
+A fragrance shopper opens a listing, activates the extension, and clicks the pet's "Check seller" action. The extension submits the current page URL and an optional user-confirmed price. The backend currently returns seller risk, buying advice, relevant source links and missing information. The new credibility specification in CREDIBILITY_CHECKING.md adds planned promise/evidence rows for shipping, arrival and returns, with domain/image context; those fields are not implemented yet. Clicking the pet opens a compact on-page result panel. Fragrances remain the supported product category.
+
+The pet is the extension's own mascot. There is no required Codex API, ChatGPT Work Pets integration, or account connection. Its appearance is still to be chosen; a code-native simple mascot can be used first. Pet behavior communicates request progress, never seller trust before the assessment completes.
+
+| State | Behavior | Trigger |
+|---|---|---|
+| Idle | Calm pet with Check seller action | No active request |
+| Searching | Searching/walking animation and working text | Submitted request awaiting response |
+| Reviewing sources | Reading/thinking animation | Only when a real backend phase signal exists |
+| Finished | Notification bubble opens result | Valid completed assessment, including insufficient evidence |
+| Error | Puzzled pet, plain error and explicit retry action | Failed, unavailable, or timed-out request |
+
+The existing backend returns a single final response and has no streaming phase signals. MVP may show Searching throughout the request; it must not simulate a source-review phase or percentage completion. No new progress infrastructure is required just for the animation.
+
+## Photon journey and shared behavior
+
+A registered user sends a fragrance listing URL and optional price through Photon. The same Grok/Tavily/Python workflow returns the same risk policy, labeled sources and unknowns as the extension, formatted for a message. Maintain source/status clarity, bounded calls, duplicate protection and explicit failure handling. The pet is a browser UI; it does not need to appear in the phone conversation.
+
+P0 includes a reproducible Photon launch/stop flow and verified inbound/reply behavior alongside the extension UI. Existing proof is iMessage; do not call it SMS. Public hosting, a persistent listener and a verified FastAPI callback remain unfinished. Shared assessment logic is required; cross-channel account linking, history synchronization and automatic forwarding between channels are not required.
+
+## P0 acceptance criteria for both channels (extension work pending)
+
+- Chrome extension loads locally; user activation shows a small movable/dismissible pet on the current shopping page. No automatic research on navigation.
+- Check seller captures the active listing URL; optional price is editable/confirmed. Do not scrape the entire page, payment forms or account details.
+- One user action starts one bounded backend evaluation. Repeated clicks do not silently create duplicate paid calls. Navigation/dismissal clears stale results; cancellation does not promise reversal of already incurred provider work.
+- Searching animation runs until the request settles. Keyboard access and reduced-motion/static pet behavior work. Position/visibility preferences may be local; no purchase/browsing history storage is required.
+- Result panel shows risk, decision, summary, missing information, provider failure states and up to two relevant source links. Unverified sources remain labeled. Distinguish completed insufficient evidence from a failed request.
+- Provider keys stay on the server. Backend access control, rate/cost limits and any required extension-origin configuration must be designed/tested before public exposure; the current local developer API is not production-ready.
+- Extension permissions are limited to the user-triggered page/task. Merchant/page content is untrusted and cannot change system instructions, tools or risk policy. Link opening/rendering must not execute retrieved markup or instructions.
+- Verify offline fixture cases first, then one explicitly authorized live extension run. An offline fixture or animated demo is not evidence of live Grok/Tavily usage.
+
+## Reused backend and current proof
+
+Python/FastAPI, shared Pydantic contracts, Grok extraction, Tavily, source/URL validation, deterministic risk rules, research status counts and evidence labels are implemented. Existing POST /api/v1/evaluate is the reference boundary; it currently permits channel=debug only. Do not invent channel=extension without a D-owned contract change. A owns the client-facing boundary/access configuration; D owns schema changes. Optional supplied price is currently extracted from message_text, not a new request field.
+
+Last implementation checks: 116 Python and four bridge tests passed. A real registered-phone iMessage test produced five Tavily records, two retained, three filtered, VERIFY_FIRST/partial; user confirmed receipt with unverified links. That proves the existing phone path, not the proposed extension.
+
+Photon messaging is a core product channel alongside the extension. Existing Spectrum iMessage bridge is bounded/local and stopped. SMS transport, the FastAPI Photon callback, persistent service and public deployment remain unverified. Keep historical proof accurate if humans consider the Photon track.
+
+## Deferred or excluded
+
+After P0 only: exact-match pricing, card rewards using non-sensitive labels, DETAILS/history, pet cosmetics or multiple pets, other browsers/categories, richer genuine progress signals. Excluded: autonomous checkout/payment, PAN/CVV/banking linkage, authenticity certainty or fraud probabilities, massive scraping, multi-agent infrastructure. No browser-store publication or deployment is authorized by this scope update.
+
+## Ownership and next implementation tasks
+
+Proposed frontend area: extension/ including its assets and tests. New frontend owner is unassigned; this update does not launch another agent. A owns Photon integration, backend access configuration and coordination; B/C/D retain their modules. Document an explicit frontend session assignment before coding and use a separate checkout for concurrent editing.
+
+Next: assign the frontend owner and implement a minimal Chrome extension/pet shell plus offline result-panel fixtures. In parallel work only when explicitly requested: A defines a safe extension API boundary and a reproducible Photon launch/stop flow. Acceptance tests should cover request/state transitions, error/insufficient-evidence distinction, duplicate-click handling, safe rendering, keyboard/reduced motion, and backend access enforcement. Then test one real listing against the shared backend and record actual results.
+
+## Credibility reference update
+
+Adopt the user-supplied Kept brief only for the promise-first credibility method described in CREDIBILITY_CHECKING.md. Both channels remain core. The extension panel will present merchant wording, quoted evidence, contradictions and unknowns; Photon will summarize the same result. Broader checkout, tracking, timestamping, training and dispute features are not added.

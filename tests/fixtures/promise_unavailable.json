@@ -1,0 +1,11 @@
+{
+  "seller_domain": "shop.example",
+  "sources": [],
+  "records": [
+    {
+      "topic": "shipping_origin",
+      "status": "unavailable",
+      "explanation": "Shipping origin is not established."
+    }
+  ]
+}

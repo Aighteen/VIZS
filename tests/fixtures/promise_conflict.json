@@ -1,0 +1,45 @@
+{
+  "seller_domain": "shop.example",
+  "sources": [
+    {
+      "source_id": "listing",
+      "url": "https://shop.example/perfume",
+      "retrieved_at": "2026-10-17T12:00:00Z",
+      "content": "Free returns. US customers only.",
+      "content_kind": "merchant_page",
+      "seller_domain": "shop.example",
+      "data_mode": "mock"
+    },
+    {
+      "source_id": "policy",
+      "url": "https://shop.example/returns",
+      "retrieved_at": "2026-10-17T12:00:00Z",
+      "content": "US customers pay return shipping. Unopened items within 30 days.",
+      "content_kind": "merchant_page",
+      "seller_domain": "shop.example",
+      "data_mode": "mock"
+    }
+  ],
+  "records": [
+    {
+      "topic": "return_cost",
+      "status": "conflicting",
+      "merchant_statement": "Free returns.",
+      "explanation": "For US customers, free returns conflicts with the customer-paid return shipping policy. No shipping cost was disclosed.",
+      "quotes": [
+        {
+          "source_id": "listing",
+          "quote": "Free returns."
+        },
+        {
+          "source_id": "policy",
+          "quote": "US customers pay return shipping."
+        }
+      ],
+      "conditions": {
+        "region": "US",
+        "eligibility": "Unopened items within 30 days."
+      }
+    }
+  ]
+}

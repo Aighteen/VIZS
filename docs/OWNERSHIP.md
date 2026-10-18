@@ -1,6 +1,8 @@
 # Development ownership
 
-Status: instruction setup only. Application paths below are proposed, not implemented. Human owners and AI sessions remain unassigned. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
+Status: Packets B, C, and D merged into the Packet A integration branch by explicit human instruction; combined offline suite passes 116 tests. Default application wiring is implemented locally; a one-off live Snowboard keyword probe passed Grok/Tavily and completed a Spectrum iMessage send request; a fragrance-URL cited reply was received by the user; the latest source-retention/status changes passed both offline tests and one live registered-phone iMessage run. Packet A was assigned to this Codex session by the human. Packets B-D assigned by the human to dedicated Codex agents; human identities remain unspecified. One person may hold multiple roles, but concurrent editing sessions need separate checkouts.
+
+Current product direction: both Photon messaging and a Chrome extension with animated on-page pet are core channels sharing one backend; see EXTENSION_SCOPE.md. Extension implementation has not started. A retains Photon integration ownership.
 
 ## Assignment register
 
@@ -8,16 +10,17 @@ The human coordinator assigns each session; A maintains this register afterward.
 
 | Packet | Human / AI tool and session | Branch | Checkout/worktree | Status |
 |---|---|---|---|---|
-| A: integration, Photon, submission coordination | TBD | `feat/packet-a-api-photon` | TBD | Unassigned |
-| B: Grok extraction | TBD | `feat/packet-b-grok` | TBD | Unassigned |
-| C: research and evidence | TBD | `feat/packet-c-research` | TBD | Unassigned |
-| D: contracts, policy, QA | TBD | `feat/packet-d-policy-qa` | TBD | Unassigned |
+| A: integration, Photon, submission coordination | Human name TBD / current Codex session | `feat/packet-a-integration` | `C:\Github\VIZS-packet-a` | Integration coordinator; B-D merged, 116 tests pass |
+| B: Grok extraction | Codex Packet B agent | `feat/packet-b-grok` | `C:\Github\VIZS-packet-b` | Implementation merged into A |
+| C: research and evidence | Codex Packet C agent | `feat/packet-c-research` | `C:\Github\VIZS-packet-c` | Implementation merged into A |
+| D: contracts, policy, QA | Codex Packet D agent | `feat/packet-d-policy-qa` | `C:\Github\VIZS-packet-d` | Contracts, policy and QA merged into A |
 
-- Integration/merge owner: TBD (A).
+- Extension frontend owner/session: unassigned; proposed exclusive area `extension/` including assets and tests. Assign explicitly before implementation; A owns its backend boundary. No agent launched by this scope change.
+- Integration owner: current Packet A Codex session; merges require explicit instruction.
 - Human Devpost submitter and backup: TBD.
-- Reviewed contract base commit: TBD.
-- Research provider: TBD (Tavily preferred).
-- Photon account-specific callback/auth/send contract: UNVERIFIED.
+- Inspected repository base commit: `ffc3e85`; shared scaffold `7d6f11a`, D contracts `f1ba046` now merged into A.
+- Research provider: Tavily; one live Snowboard keyword search returned three sources (docs/LIVE_KEYWORD_PROBE.md). Seller research remains unverified.
+- Photon Spectrum: Free VIZS project configured, authorized iPhone registered, SDK iMessage echo agent running. Inbound text and completed reply request observed; user reported connection success. FastAPI callback/auth/send contract remains UNVERIFIED; no webhook enabled.
 
 ## Exclusive writable paths
 
@@ -27,6 +30,8 @@ The human coordinator assigns each session; A maintains this register afterward.
 | B | `app/services/grok.py`, `app/agents/`, `tests/test_grok.py` |
 | C | `app/research/`, `app/services/tavily.py`, `tests/test_research.py`, `tests/test_url_safety.py` |
 | D | `app/models/`, `app/decision/`, `tests/conftest.py`, `tests/fixtures/`, `tests/test_contracts.py`, `tests/test_policy.py`, `tests/test_sms.py`, `tests/test_e2e.py`, `docs/API_CONTRACTS.md` |
+
+Proposed extension ownership: `extension/` (frontend owner TBD). A may update scope/coordination docs now; extension source implementation requires the frontend assignment above.
 
 A owns shared package initializers (`app/__init__.py`, `app/services/__init__.py`, `tests/__init__.py`). Each packet owns initializers within its exclusive directories. New areas, including any frontend, need an explicit owner/path assignment. Request dependency changes through A and model/shared fixture changes through D.
 
@@ -44,3 +49,12 @@ These are development roles. Current runtime scope is one central Grok orchestra
 ## Submission protection (PDT)
 
 Human submitter targets Saturday October 17, 2026 at 10:00 PM for the mandatory 10:30 PM draft, and Sunday October 18 at 9:15 AM for the 10:00 AM final. Feature freeze: Sunday 7:30 AM. Preserve at least 30 minutes for upload checks. Humans select tracks and submit; see `SPRINT_PLAN.md` and `SUBMISSION_CHECKLIST.md`.
+
+
+## Current follow-up assignment
+
+Human instructed root to continue the proposed C/D research-output improvement. This session owns the scoped follow-up in the A integration checkout: app/research/{provider,evidence}.py, app/services/tavily.py, app/models/__init__.py, app/decision/{rules,sms}.py, their focused tests, A workflow/API/bridge diagnostics, and coordination docs. Other packet checkouts remain untouched. No additional agents or live calls required. Preserve prior local work.
+
+## Human-authorized completion build
+
+Root is tech lead/integration owner. Human explicitly authorized delegated agents in separate worktrees. Current exclusive assignments are recorded in TECH_LEAD_PLAN.md and override the older packet register only for this completion build. Frontend owner is the pet-extension agent at C:\Github\VIZS-extension on feat/pet-extension; promise agent owns D paths at VIZS-promises; research agent owns B+C paths at VIZS-research. Root keeps A paths and shared coordination. Existing checkouts are preserved. Acceptance criteria: ACCEPTANCE_TESTS.md. Local commits and integration merges are authorized for this build; no push/deployment/paid probes/messages are implied.
