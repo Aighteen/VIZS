@@ -99,3 +99,11 @@ send_text(destination, body, correlation_id) -> SendResult
 - Webhook validation failure → reject (exact status depends on documented Photon retry contract).
 - Duplicate inbound → idempotent no duplicate outbound response.
 - Timeout → bounded status/follow-up or explicit failure; do not leave user expecting a result if work died.
+
+## Executable Contract gate (Packet D)
+
+`app.models` is the executable Pydantic v2 source of truth. All contracts forbid extra fields and bound strings/collections. Money uses Decimal; evidence timestamps require timezone information. Only `verify_seller` is permitted at P0. Plan fields add optional brand, clarification, bounded status and data_mode. Evidence requires an actual source_url and retrieval timestamp; gaps are assessment missing_information, never invented source records. Evidence adds excerpt, optional evidence_id and seller_domain, explicit finding and polarity, and data_mode. Search snippets must not automatically become verified_fact.
+
+`tests/fixtures/positive.json` and `insufficient.json` are SYNTHETIC, mock-labeled contract examples, not real research. Risk/decision combinations are validated; mock/partial evidence cannot produce a live-labeled assessment. HttpUrl syntax is not SSRF protection; C owns DNS/redirect safety.
+
+Policy integration: `decide(request, plan, evidence) -> Assessment`; `format_sms(assessment) -> str`. Research yields `list[Evidence]`. Strong findings must refer to the listing seller via seller_domain. Official supported authorization permits LOWER_RISK; two independent regulatory/investigation substantial adverse findings permit HIGHER_RISK. Conflicting or weak records conservatively yield VERIFY_FIRST. These are prototype decision criteria, never authenticity verification.
