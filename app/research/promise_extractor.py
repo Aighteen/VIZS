@@ -102,7 +102,7 @@ _LEXICAL_TOPICS = (
                          r"\b(?:ships from|shipped from|dispatched from|dispatches from|fulfilled from|sent from|warehouse)\b"), None, None),
     ("processing_time", (r"\b(?:process(?:ed|ing)?|dispatch(?:ed|es)?|ships? within|shipped within|prepared)\b", _DURATION), _RETURN_WORDS, None),
     ("transit_time", (r"\b(?:deliver(?:y|ed|ies)?|arrive|arrival|transit|(?:standard|express|ground) shipping)\b", _DURATION), _RETURN_WORDS, None),
-    ("returns", (_RETURN_WORDS, _DURATION + r"|\b(?:final sale|non-returnable|unopened|unused|original condition|accept)\b"), None,
+    ("returns", (_RETURN_WORDS, _DURATION + r"|\b(?:final sale|non-returnable|unopened|unused|original condition|accept(?:s|ed)? returns|returns? (?:are|is) (?:not )?accepted)\b"), None,
      r"\b(?:accepts? returns|returns? (?:are|is) (?:not )?accepted|(?:may|can) (?:be )?return(?:ed)?|return (?:it|them|items?|products?) within|final sale|non-returnable)\b"),
     ("return_cost", (r"\breturns?\b", r"\b(?:free|prepaid|pre-paid|complimentary|return label|at (?:your|the customer's) (?:own )?(?:cost|expense)|you (?:are responsible|pay)|pay for (?:the )?return|deducted)\b"), None,
      r"\b(?:free returns?|prepaid return|return label|pay for (?:the )?return|return shipping (?:is|costs?))\b"),
@@ -120,18 +120,87 @@ def _sentences(registry):
                     yield source.source_id, sentence
 
 
-def lexical_candidates(registry) -> list[PromiseRecord]:
+# Regions a policy sentence can be scoped to. Abbreviations are case-sensitive so
+# "us"/"eu" in running text do not count; a bare "$" is read as US dollars.
+_REGION_WORDS = {
+    "US": r"\bU\.S\.A?\.?|\bUSA?\b(?!\$)|\bUnited States\b|\bcontiguous states\b",
+    "UK": r"\bU\.K\.?|\bUK\b|\bUnited Kingdom\b|\bGreat Britain\b",
+    "EU": r"\bEU\b|\bEurope(?:an Union)?\b|\bFrance\b|\bGermany\b|\bItaly\b|\bSpain\b|\bNetherlands\b|\bIreland\b",
+    "AU": r"\bAustralia\b",
+    "CA": r"\bCanada\b",
+    "INTL": r"\b[Ii]nternational\b|\b[Rr]est of (?:the )?[Ww]orld\b|\bROW\b",
+}
+_REGION_MONEY = {
+    "US": r"(?<![A-Za-z])\$\s?\d|\bUSD\b", "UK": r"£|\bGBP\b", "EU": r"€|\bEUR\b",
+    "AU": r"\bA\$|\bAU\$|\bAUD\b", "CA": r"\bC\$|\bCA\$|\bCAD\b",
+}
+_HOST_REGIONS = ((".co.uk", "UK"), (".uk", "UK"), (".com.au", "AU"), (".au", "AU"), (".ca", "CA"),
+                 (".fr", "EU"), (".de", "EU"), (".it", "EU"), (".es", "EU"), (".nl", "EU"), (".ie", "EU"),
+                 (".eu", "EU"), (".be", "EU"), (".at", "EU"))
+_PATH_REGIONS = {"us": "US", "en-us": "US", "en_us": "US", "uk": "UK", "gb": "UK", "en-gb": "UK", "en_gb": "UK",
+                 "au": "AU", "en-au": "AU", "ca": "CA", "en-ca": "CA", "eu": "EU", "en-eu": "EU", "fr": "EU",
+                 "de": "EU", "it": "EU", "es": "EU", "nl": "EU", "ie": "EU", "fr-fr": "EU", "de-de": "EU"}
+# Special cases are not the general rule: prefer sentences without them, and when
+# one is the only match, the case is attached as its eligibility condition.
+_SPECIAL = re.compile(r"\b(?:final sale(?: items?)?|sale items?|clearance(?: items?)?|samples?(?: orders?)?|gift cards?|"
+                      r"personali[sz]ed (?:items?|products?|orders?)|engraved (?:items?|products?)|custom(?:ized)? (?:items?|orders?)|"
+                      r"pre-?orders?|outlet(?: items?)?|faulty|defective|damaged)\b", re.IGNORECASE)
+
+
+def listing_region(url) -> str | None:
+    """Region a listing URL is sold into, from its ccTLD or a locale path segment."""
+    parts = urlsplit(str(url))
+    host = (parts.hostname or "").lower()
+    for suffix, region in _HOST_REGIONS:
+        if host.endswith(suffix):
+            return region
+    first = parts.path.strip("/").split("/", 1)[0].lower()
+    if first in _PATH_REGIONS:
+        return _PATH_REGIONS[first]
+    return "US" if host.endswith((".com", ".net", ".org", ".us", ".co", ".shop", ".store")) else None
+
+
+def _regions(sentence: str) -> dict[str, str | None]:
+    """Regions a sentence names: region -> the named words (None if only money shows it)."""
+    found = {}
+    for region, pattern in _REGION_WORDS.items():
+        match = re.search(pattern, sentence)
+        if match:
+            found[region] = match.group(0)
+    for region, pattern in _REGION_MONEY.items():
+        if region not in found and re.search(pattern, sentence):
+            found[region] = None
+    return found
+
+
+def lexical_candidates(registry, listing_url=None) -> list[PromiseRecord]:
+    """One row per topic: a whole sentence for the listing's region, general rule first.
+
+    A sentence that names only other regions is skipped; a sentence that names the
+    listing's region in words carries that region as a condition."""
+    home = listing_region(listing_url) if listing_url else None
     rows = []
-    for topic, needed, excluded, strong in _LEXICAL_TOPICS:
-        matches = [(source_id, sentence) for source_id, sentence in _sentences(registry)
-                   if not (excluded and re.search(excluded, sentence, re.IGNORECASE))
-                   and all(re.search(pattern, sentence, re.IGNORECASE) for pattern in needed)]
-        preferred = [m for m in matches if strong and re.search(strong, m[1], re.IGNORECASE)]
-        if matches:
-            source_id, sentence = (preferred or matches)[0]
+    for order_topic in _LEXICAL_TOPICS:
+        topic, needed, excluded, strong = order_topic
+        ranked = []
+        for index, (source_id, sentence) in enumerate(_sentences(registry)):
+            if excluded and re.search(excluded, sentence, re.IGNORECASE):
+                continue
+            if not all(re.search(pattern, sentence, re.IGNORECASE) for pattern in needed):
+                continue
+            regions = _regions(sentence)
+            if regions and (home is None or home not in regions):
+                continue
+            special = _SPECIAL.search(sentence)
+            is_strong = bool(strong and re.search(strong, sentence, re.IGNORECASE))
+            ranked.append(((bool(special), not is_strong, home not in regions, index), source_id, sentence,
+                           regions.get(home) if home else None, special.group(0) if special else None))
+        if ranked:
+            _, source_id, sentence, region, special = min(ranked, key=lambda item: item[0])
             rows.append(PromiseRecord(topic=topic, status="supported_as_statement",
                                       explanation="Sentence matched by fixed policy patterns.",
-                                      quotes=[{"source_id": source_id, "quote": sentence}]))
+                                      quotes=[{"source_id": source_id, "quote": sentence}],
+                                      conditions={"region": region, "eligibility": special}))
     return rows
 
 
@@ -281,7 +350,7 @@ class PromiseExtractor:
         # Mandatory provider-owned registry passed separately; model cannot replace it.
         fallback = message is not None and reader == "promise reader timed out"
         if fallback:
-            sheet = sheet.model_copy(update={"records": lexical_candidates(registry)})
+            sheet = sheet.model_copy(update={"records": lexical_candidates(registry, plan.product_url)})
         validated = validate_promise_sheet(sheet, sources=registry, seller_domain=seller)
         if proposed is not None:
             reader = f"promise reader proposed {proposed} rows, {len(validated.records)} kept after quote checks"

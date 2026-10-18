@@ -368,3 +368,59 @@ def test_canonical_rule_needs_one_unambiguous_request():
         return httpx.Response(200, json={"results": [{"url": PRODUCT, "raw_content": PAGE_TEXT}]})
     provider = TavilyProvider("fixture", transport=httpx.MockTransport(handler))
     assert run(provider.extract_sources([VARIANT, PRODUCT + "?variant=2"])) == []
+
+
+REGIONAL_PAGE = (
+    "HOME DELIVERY\n"
+    "Free standard shipping on orders €100+ (2–3 business days)\n"
+    "Free standard shipping on orders £100+ (3–4 business days)\n"
+    "Free standard shipping on orders $35+ (5–7 business days)\n"
+    "Final Sale items cannot be returned, canceled, or exchanged.\n"
+    "Unworn shoes can be returned within 30 days of delivery.\n"
+    "Return shipping is free for US orders.\n"
+    "Return shipping is free for UK orders.\n"
+)
+
+
+def fallback_rows(listing, content=REGIONAL_PAGE):
+    from app.research.promise_extractor import lexical_candidates, source_registry
+    source = SourceRecord(listing, "Retrieved merchant page", content, datetime.now(timezone.utc), content_kind="merchant_page")
+    rows = lexical_candidates(source_registry(SimpleNamespace(product_url=listing), [source]), listing)
+    return {r.topic: (r.quotes[0].quote, r.conditions.region, r.conditions.eligibility) for r in rows}
+
+
+def test_fallback_quotes_the_listing_region_and_the_general_rule():
+    rows = fallback_rows("https://www.shop-synthetic.com/products/runner")
+    assert rows["transit_time"] == ("Free standard shipping on orders $35+ (5–7 business days)", None, None)
+    assert rows["returns"] == ("Unworn shoes can be returned within 30 days of delivery.", None, None)
+    assert rows["return_cost"] == ("Return shipping is free for US orders.", "US", None)
+
+
+@pytest.mark.parametrize("listing, transit, cost", [
+    ("https://www.shop-synthetic.co.uk/products/runner", "£100+", "UK orders"),
+    ("https://www.shop-synthetic.com/uk/products/runner", "£100+", "UK orders"),
+    ("https://www.shop-synthetic.com/fr/products/runner", "€100+", None),
+])
+def test_fallback_region_follows_cctld_or_locale_path(listing, transit, cost):
+    rows = fallback_rows(listing)
+    assert transit in rows["transit_time"][0]
+    assert (cost in rows["return_cost"][0]) if cost else "return_cost" not in rows
+
+
+def test_special_case_is_used_only_as_a_last_resort_and_named_as_eligibility():
+    rows = fallback_rows("https://www.shop-synthetic.com/p", "Final Sale items cannot be returned, canceled, or exchanged.\n")
+    assert rows["returns"] == ("Final Sale items cannot be returned, canceled, or exchanged.", None, "Final Sale items")
+
+
+def test_fallback_conditions_survive_validation_and_show_in_reply():
+    from app.decision.promises import validate_promise_sheet
+    from app.research.promise_extractor import lexical_candidates, source_registry
+    from app.models import PromiseSheet
+    listing = "https://www.shop-synthetic.com/products/runner"
+    source = SourceRecord(listing, "Retrieved merchant page", REGIONAL_PAGE, datetime.now(timezone.utc), content_kind="merchant_page")
+    registry = source_registry(SimpleNamespace(product_url=listing), [source])
+    sheet = validate_promise_sheet(PromiseSheet(seller_domain="shop-synthetic.com", sources=registry,
+                                                records=lexical_candidates(registry, listing)),
+                                   sources=registry, seller_domain="shop-synthetic.com")
+    cost = next(r for r in sheet.records if r.topic == "return_cost")
+    assert cost.conditions.region == "US" and len(sheet.records) == 3
